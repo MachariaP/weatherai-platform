@@ -108,4 +108,38 @@ describe("useWeather", () => {
     const calledUrl = mockFetch.mock.calls[0][0];
     expect(calledUrl).toContain("units=imperial");
   });
+
+  it("passes ai=true when enabled", async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve(MOCK_WEATHER),
+      headers: new Headers(),
+    });
+    vi.stubGlobal("fetch", mockFetch);
+
+    renderHook(() => useWeather(0, 0, "metric", true));
+
+    await waitFor(() => expect(mockFetch).toHaveBeenCalled());
+
+    const calledUrl = mockFetch.mock.calls[0][0];
+    expect(calledUrl).toContain("ai=true");
+  });
+
+  it("omits ai param when disabled (default)", async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve(MOCK_WEATHER),
+      headers: new Headers(),
+    });
+    vi.stubGlobal("fetch", mockFetch);
+
+    renderHook(() => useWeather(0, 0, "metric", false));
+
+    await waitFor(() => expect(mockFetch).toHaveBeenCalled());
+
+    const calledUrl = mockFetch.mock.calls[0][0];
+    expect(calledUrl).not.toContain("ai=");
+  });
 });

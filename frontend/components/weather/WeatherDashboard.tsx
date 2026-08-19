@@ -16,11 +16,12 @@ import {
 
 export function WeatherDashboard() {
   const { location, error: locationError } = useLocation();
-  const { units } = usePreferences();
+  const { units, aiEnabled } = usePreferences();
   const { data, isLoading, error, cacheStatus, refetch } = useWeather(
     location?.lat ?? null,
     location?.lon ?? null,
-    units
+    units,
+    aiEnabled
   );
 
   if (!location) {

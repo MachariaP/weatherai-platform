@@ -14,7 +14,8 @@ interface UseWeatherResult {
 export function useWeather(
   lat: number | null,
   lon: number | null,
-  units: "metric" | "imperial" = "metric"
+  units: "metric" | "imperial" = "metric",
+  ai: boolean = false
 ): UseWeatherResult {
   const [data, setData] = useState<WeatherResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -32,43 +33,64 @@ export function useWeather(
     const controller = new AbortController();
     abortRef.current = controller;
 
-    setIsLoading(true);
-    setError(null);
+    let cancelled = false;
 
     const params = new URLSearchParams({
       lat: String(lat),
       lon: String(lon),
       units,
     });
+    if (ai) params.set("ai", "true");
 
-    fetch(`/api/weather?${params}`, { signal: controller.signal })
-      .then(async (res) => {
+    // setState calls are inside async callbacks (not synchronously in the effect body)
+    const run = async () => {
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        const res = await fetch(`/api/weather?${params}`, {
+          signal: controller.signal,
+        });
+        if (cancelled) return;
+
         setCacheStatus(res.headers.get("x-cache"));
+
         if (!res.ok) {
           const body = await res.json().catch(() => ({
             error: "unknown",
             message: `Request failed (${res.status})`,
           }));
-          setError(body);
-          setData(null);
+          if (!cancelled) {
+            setError(body);
+            setData(null);
+          }
         } else {
-          setData(await res.json());
-          setError(null);
+          const json = await res.json();
+          if (!cancelled) {
+            setData(json);
+            setError(null);
+          }
         }
-      })
-      .catch((err) => {
-        if (err.name !== "AbortError") {
+      } catch (err: unknown) {
+        if (!cancelled && err instanceof Error && err.name !== "AbortError") {
           setError({
             error: "network_error",
             message: "Could not reach the server",
           });
           setData(null);
         }
-      })
-      .finally(() => setIsLoading(false));
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    };
 
-    return () => controller.abort();
-  }, [lat, lon, units, tick]);
+    run();
+
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [lat, lon, units, ai, tick]);
 
   return { data, isLoading, error, cacheStatus, refetch };
 }

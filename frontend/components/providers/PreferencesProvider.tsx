@@ -4,8 +4,7 @@ import {
   createContext,
   useCallback,
   useContext,
-  useEffect,
-  useState,
+  useSyncExternalStore,
   type ReactNode,
 } from "react";
 
@@ -13,30 +12,55 @@ type Units = "metric" | "imperial";
 
 interface PreferencesContextValue {
   units: Units;
+  aiEnabled: boolean;
   setUnits: (u: Units) => void;
+  setAiEnabled: (v: boolean) => void;
 }
 
 const PreferencesContext = createContext<PreferencesContextValue | null>(null);
 
-export function PreferencesProvider({ children }: { children: ReactNode }) {
-  const [units, setUnitsState] = useState<Units>("metric");
-  const [hydrated, setHydrated] = useState(false);
+function getStoredUnits(): Units {
+  if (typeof window === "undefined") return "metric";
+  return localStorage.getItem("units") === "imperial" ? "imperial" : "metric";
+}
 
-  useEffect(() => {
-    const saved = localStorage.getItem("units");
-    if (saved === "imperial") setUnitsState("imperial");
-    setHydrated(true);
-  }, []);
+function getStoredAi(): boolean {
+  if (typeof window === "undefined") return false;
+  return localStorage.getItem("ai") === "true";
+}
+
+let unitsListeners: Array<() => void> = [];
+function subscribeUnits(cb: () => void) {
+  unitsListeners.push(cb);
+  return () => {
+    unitsListeners = unitsListeners.filter((l) => l !== cb);
+  };
+}
+
+let aiListeners: Array<() => void> = [];
+function subscribeAi(cb: () => void) {
+  aiListeners.push(cb);
+  return () => {
+    aiListeners = aiListeners.filter((l) => l !== cb);
+  };
+}
+
+export function PreferencesProvider({ children }: { children: ReactNode }) {
+  const units = useSyncExternalStore(subscribeUnits, getStoredUnits, () => "metric" as Units);
+  const aiEnabled = useSyncExternalStore(subscribeAi, getStoredAi, () => false);
 
   const setUnits = useCallback((u: Units) => {
-    setUnitsState(u);
     localStorage.setItem("units", u);
+    unitsListeners.forEach((l) => l());
   }, []);
 
-  if (!hydrated) return null;
+  const setAiEnabled = useCallback((v: boolean) => {
+    localStorage.setItem("ai", String(v));
+    aiListeners.forEach((l) => l());
+  }, []);
 
   return (
-    <PreferencesContext.Provider value={{ units, setUnits }}>
+    <PreferencesContext.Provider value={{ units, aiEnabled, setUnits, setAiEnabled }}>
       {children}
     </PreferencesContext.Provider>
   );

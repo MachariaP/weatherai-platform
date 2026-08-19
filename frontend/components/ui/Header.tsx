@@ -2,6 +2,7 @@
 
 import { SearchBar } from "./SearchBar";
 import { UnitToggle } from "./UnitToggle";
+import { AiToggle } from "./AiToggle";
 
 export function Header() {
   return (
@@ -13,6 +14,7 @@ export function Header() {
         <div className="flex items-center gap-3 flex-wrap flex-1 justify-end">
           <SearchBar />
           <UnitToggle />
+          <AiToggle />
         </div>
       </div>
     </header>
