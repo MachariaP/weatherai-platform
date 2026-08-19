@@ -56,17 +56,21 @@ Next.js route handler. Validates params, proxies to FastAPI, forwards the respon
 | Header | Values | Description |
 |---|---|---|
 | `X-Cache` | `HIT` or `MISS` | Whether the FastAPI cache served this response |
+| `X-RateLimit-Reset` | unix epoch (429 only) | When the upstream quota resets; only present if upstream provided it |
 
 **Error Responses:**
 
 | Status | Error Code | When |
 |---|---|---|
-| 400 | `bad_request` | Invalid or missing query params |
-| 401 | `auth_error` | API key missing or invalid |
-| 429 | `rate_limited` | Upstream rate limit exceeded |
-| 502 | `upstream_error` | WeatherAI returned an unrecoverable error |
-| 503 | `backend_unavailable` | FastAPI backend is unreachable |
-| 504 | `backend_timeout` | FastAPI backend did not respond in time |
+| 400 | `bad_request` | Invalid or missing query params (frontend validation) or upstream rejected the request |
+| 403 | `plan_restriction` | WeatherAI returned 403 — requested feature not available on the current plan |
+| 429 | `rate_limit` | Upstream rate limit / quota exhausted |
+| 502 | `upstream_auth` | WeatherAI rejected our credentials (upstream 401) — deliberately surfaced as a server-side configuration error, never as a client auth error |
+| 502 | `upstream_error` | WeatherAI returned an unrecoverable 5xx (after retries) or an unclassified upstream error |
+| 502 | `malformed_response` | Upstream returned non-JSON, a non-object body, or data that failed normalization |
+| 503 | `backend_unavailable` | Next.js could not reach the FastAPI backend |
+| 504 | `backend_timeout` | Next.js did not receive a response from FastAPI in time |
+| 504 | `timeout` | WeatherAI did not respond within the backend timeout |
 
 **Error Shape:**
 
@@ -76,6 +80,8 @@ Next.js route handler. Validates params, proxies to FastAPI, forwards the respon
   "message": "lat is required and must be between -90 and 90"
 }
 ```
+
+> **Note on 401:** the backend never returns `401`. Upstream authentication failures (WeatherAI 401) are mapped to `502 upstream_auth` so the browser cannot distinguish a client error from a server configuration problem.
 
 ---
 

@@ -56,7 +56,7 @@ Visit `http://localhost:3000` — enter coordinates or click "My Location".
 ### Running Tests
 
 ```bash
-# Backend (77 tests)
+# Backend (81 tests)
 cd backend && pytest
 
 # Frontend (47 tests)
@@ -106,3 +106,8 @@ See `DOCS/` for detailed architecture, API reference, build plan, interview prep
 - No city name search (WeatherAI Free plan limitation)
 - In-memory cache resets on backend restart
 - AI summaries consume a separate, smaller quota (200/mo vs 1000/mo)
+- AI summary availability depends on the upstream plan: on the currently tested
+  Free plan, `ai=true` requests succeed but the upstream returned no AI summary
+  (`ai_summary: null`). The application boundary supports the feature and
+  renders the summary whenever the upstream provides one.
+- Deployment status: **NOT DEPLOYED / NOT VERIFIED** — see `DOCS/deployment.md`.
