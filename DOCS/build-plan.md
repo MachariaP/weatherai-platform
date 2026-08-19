@@ -4,6 +4,20 @@ Phase-by-phase plan for the WeatherAI QA project.
 
 ---
 
+## Scope Status (reconciled)
+
+- **Phases 0–3** were the originally approved implementation boundary. They are
+  implemented, tested, and verified.
+- **Phases 4–10** were implemented additionally, beyond the approved Phase 3
+  boundary. They have been independently audited and are **retained
+  provisionally** because they do not violate the original architecture
+  (verified against the frozen contract in `architecture.md`).
+- The reconciliation phase validates and hardens that work rather than
+  expanding scope. It does not add product features.
+- Deployment is **NOT DEPLOYED / NOT VERIFIED** — see `deployment.md`.
+
+---
+
 ## Phase 0: Foundation ✅
 
 - FastAPI + Next.js project scaffold

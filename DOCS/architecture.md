@@ -15,6 +15,38 @@ Two-service architecture: a **FastAPI backend** (Python) handles all upstream AP
                   cache: "no-store"
 ```
 
+## Frozen Contract
+
+The boundaries below are frozen. New work must preserve them; they are not
+subject to change without an explicit architecture decision.
+
+| Concern | Owner |
+|---|---|
+| WeatherAI API key | FastAPI only |
+| WeatherAI base URL | FastAPI only |
+| Upstream authentication (Bearer) | FastAPI only |
+| Upstream request parameters | FastAPI only |
+| Timeout | FastAPI only |
+| Retry policy | FastAPI only |
+| Upstream error mapping | FastAPI only |
+| Response validation (upstream models) | FastAPI only |
+| Response normalization | FastAPI only |
+| TTL caching | FastAPI only |
+| Cache key generation | FastAPI only |
+| Browser-facing API boundary | Next.js `/api/weather` only |
+| TypeScript representation of the public contract | Next.js (`lib/types.ts`) |
+| Parameter validation at the browser boundary | Next.js route handler |
+| Translation of backend/network failures | Next.js |
+| UI state / presentation | Next.js |
+
+**The browser must never:**
+
+- call WeatherAI directly
+- know the WeatherAI API key
+- receive `NEXT_PUBLIC_*` WeatherAI credentials
+- contain a second WeatherAI client
+- contain a second cache
+
 ## Service Responsibilities
 
 ### FastAPI Backend
