@@ -12,7 +12,9 @@ backend/.env
 frontend/node_modules/
 frontend/.next/
 frontend/out/
-frontend/.env.local
+frontend/.env*.local
+frontend/next-env.d.ts
+frontend/*.tsbuildinfo
 
 # OS
 .DS_Store
