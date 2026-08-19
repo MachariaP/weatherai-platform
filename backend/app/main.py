@@ -1,21 +1,21 @@
 """
 WeatherAI QA project — FastAPI backend.
 
-Phase 0 scope: application process, health check, CORS for local dev.
-No WeatherAI integration yet — that's Phase 1. This endpoint must never
-depend on an external service, so the app's own liveness can always be
-verified independently of WeatherAI's availability.
+The /health endpoint never depends on an external service — it answers
+"is our process up", not "is WeatherAI up".  Weather routes are
+registered from app.routes.weather.
 """
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
+from app.routes.weather import router as weather_router
 
 settings = get_settings()
 
 app = FastAPI(
     title="WeatherAI QA Backend",
-    version="0.1.0",
+    version="0.2.0",
     description="Backend service wrapping the WeatherAI API for the QA Engineer take-home assignment.",
 )
 
@@ -25,6 +25,8 @@ app.add_middleware(
     allow_methods=["GET"],
     allow_headers=["*"],
 )
+
+app.include_router(weather_router)
 
 
 @app.get("/health")
