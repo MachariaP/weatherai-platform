@@ -12,6 +12,8 @@ import pytest
 import respx
 from fastapi.testclient import TestClient
 
+from app.client import WeatherAIClient
+from app.errors import WeatherAIError
 from app.main import app
 from app.routes.weather import _cache
 
@@ -193,6 +195,15 @@ def test_upstream_401_returns_502(monkeypatch: pytest.MonkeyPatch):
 
 
 @respx.mock
+def test_upstream_400_returns_400(monkeypatch: pytest.MonkeyPatch):
+    _patch_key(monkeypatch)
+    respx.get(WEATHER_URL).mock(return_value=httpx.Response(400, text="Bad request"))
+    resp = client.get("/weather", params={"lat": 0, "lon": 0})
+    assert resp.status_code == 400
+    assert resp.json()["error"] == "bad_request"
+
+
+@respx.mock
 def test_upstream_403_returns_403(monkeypatch: pytest.MonkeyPatch):
     _patch_key(monkeypatch)
     respx.get(WEATHER_URL).mock(return_value=httpx.Response(403, text="Forbidden"))
@@ -214,6 +225,16 @@ def test_upstream_429_returns_429(monkeypatch: pytest.MonkeyPatch):
     resp = client.get("/weather", params={"lat": 0, "lon": 0})
     assert resp.status_code == 429
     assert resp.json()["error"] == "rate_limit"
+
+
+@respx.mock
+def test_upstream_429_without_reset_header_returns_429(monkeypatch: pytest.MonkeyPatch):
+    _patch_key(monkeypatch)
+    respx.get(WEATHER_URL).mock(return_value=httpx.Response(429, text="Too Many Requests"))
+    resp = client.get("/weather", params={"lat": 0, "lon": 0})
+    assert resp.status_code == 429
+    assert resp.json()["error"] == "rate_limit"
+    assert "x-ratelimit-reset" not in resp.headers
 
 
 @respx.mock
@@ -239,6 +260,37 @@ def test_upstream_malformed_json_returns_502(monkeypatch: pytest.MonkeyPatch):
     _patch_key(monkeypatch)
     respx.get(WEATHER_URL).mock(
         return_value=httpx.Response(200, text="not json at all")
+    )
+    resp = client.get("/weather", params={"lat": 0, "lon": 0})
+    assert resp.status_code == 502
+    assert resp.json()["error"] == "malformed_response"
+
+
+# ── Generic upstream error fallback ────────────────────────────────
+
+def test_generic_upstream_error_returns_502(monkeypatch: pytest.MonkeyPatch):
+    _patch_key(monkeypatch)
+
+    async def boom(self, **kwargs):
+        raise WeatherAIError("unexpected upstream failure")
+
+    monkeypatch.setattr(WeatherAIClient, "get_weather", boom)
+
+    resp = client.get("/weather", params={"lat": 0, "lon": 0})
+    assert resp.status_code == 502
+    assert resp.json()["error"] == "upstream_error"
+
+
+# ── Normalization failure ──────────────────────────────────────────
+
+@respx.mock
+def test_missing_current_in_upstream_returns_502(monkeypatch: pytest.MonkeyPatch):
+    _patch_key(monkeypatch)
+    respx.get(WEATHER_URL).mock(
+        return_value=httpx.Response(
+            200,
+            json={"lat": 0.0, "lon": 0.0, "units": "metric", "days": 1},
+        )
     )
     resp = client.get("/weather", params={"lat": 0, "lon": 0})
     assert resp.status_code == 502
