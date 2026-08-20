@@ -187,3 +187,15 @@ directly in production.
 | `GET /reverse?lat=&lon=` | Photon reverse → `{ lat, lon, label }` |
 | `GET /geolocate` | IP approximation → `{ lat, lon, label }` |
 | `GET /health` | Liveness of this process only (`{ "status": "ok" }`). Does not call WeatherAI. |
+
+Public response models are declared on those routes (`WeatherResponse`,
+`GeocodeSearchResponse`, `GeocodeResult`, `ApiError`). FastAPI OpenAPI is the
+machine-readable contract. Frontend types are generated from it:
+
+```bash
+cd frontend && npm run generate:api-types
+```
+
+Do not edit `frontend/lib/generated/api-schema.ts`. Stable aliases live in
+`frontend/lib/types.ts`. Upstream WeatherAI / Photon / ipwho.is models are not
+published in OpenAPI.

@@ -16,6 +16,7 @@ Frontend
 
 CI
   ├── backend ruff + pytest --cov=app
+  ├── frontend generate/verify API types (no upstream)
   ├── frontend lint, typecheck, Vitest
   ├── frontend production build (`npm run build`)
   └── Playwright deterministic browser suite
@@ -29,6 +30,7 @@ Purpose: fast, deterministic checks of pure logic and component edge cases.
 
 ```bash
 cd frontend
+npm run generate:api-types   # FastAPI OpenAPI → lib/generated/api-schema.ts
 npm test
 npm run typecheck
 npm run lint
@@ -86,6 +88,12 @@ Playwright is a **separate CI job** from lint/Vitest/`tsc` so Chromium install
 does not slow the unit job. Failed CI runs upload `test-results/` and
 `playwright-report/` (screenshots + traces). Successful runs do not keep video.
 
+The frontend unit job regenerates public API types from FastAPI OpenAPI and
+fails if `lib/generated/api-schema.ts` differs from git. That step needs Python
+and `backend/requirements.txt`; it does not call WeatherAI, Photon, or
+ipwho.is. Typecheck runs after the drift check so stale generated types cannot
+silently compile.
+
 Retries are **0**. Flakes must be fixed, not hidden.
 
 ## Commands
@@ -98,7 +106,9 @@ pytest --cov=app --cov-report=term-missing
 
 # Frontend unit
 cd frontend
+npm run generate:api-types
 npm test && npm run typecheck && npm run lint && npm run build
+npm run check:api-types   # regenerate + fail on git diff
 
 # Browser E2E (mocked /api)
 cd frontend

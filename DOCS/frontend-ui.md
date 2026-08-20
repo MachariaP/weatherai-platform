@@ -24,8 +24,9 @@ WeatherAI (lat/lon only)  |  Photon  |  IP lookup
 ```
 
 The UI has no knowledge of WeatherAI or geocoder hosts. Weather values
-come from the `WeatherResponse` contract in `lib/types.ts`. Place labels
-come from FastAPI geocoding (`place_name` on weather, or `/api/geocode`).
+come from the public `WeatherResponse` contract (FastAPI OpenAPI → generated
+TypeScript aliases in `lib/types.ts`). Place labels come from FastAPI
+geocoding (`place_name` on weather, or `/api/geocode`).
 
 ### Component hierarchy
 

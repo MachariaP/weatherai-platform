@@ -46,7 +46,8 @@ subject to change without an explicit architecture decision.
 | Photon search / reverse | FastAPI only |
 | IP geolocation | FastAPI only |
 | Browser-facing API boundary | Next.js `/api/weather`, `/api/geocode`, `/api/reverse`, `/api/geolocate` |
-| TypeScript representation of the public contract | Next.js (`lib/types.ts`) |
+| Public API TypeScript types | Generated from FastAPI OpenAPI (`lib/generated/api-schema.ts`); aliases in `lib/types.ts` |
+| Frontend-only types | Handwritten (preferences, recents/favorites, UI state, Playwright fixtures) |
 | Parameter validation at the browser boundary | Next.js route handler |
 | Translation of backend/network failures | Next.js |
 | UI state / presentation | Next.js |
@@ -101,6 +102,11 @@ the public contract. Geocode responses are normalized in `app/geocode.py` from
 Photon / ipwho.is into the same `{ lat, lon, label }` application shape.
 When an upstream shape changes, only the FastAPI adapter for that provider
 changes — the browser still never sees provider JSON.
+
+Frontend TypeScript for those public models is generated from FastAPI OpenAPI
+(`npm run generate:api-types`). Upstream `Upstream*` models, Photon payloads,
+and ipwho.is bodies are not part of that schema. UI-only types are not
+generated.
 
 Daily and hourly `precipitation` is an **amount** (`float | null`): `0.0` is
 verified zero; `null` means the upstream value was missing. Missing is never

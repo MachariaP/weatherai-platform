@@ -56,16 +56,34 @@ npm run dev
 
 Visit `http://localhost:3000` — search a place name, enter coordinates, or click "My Location".
 
+### Public API TypeScript types
+
+FastAPI public Pydantic models are the source of truth. OpenAPI is generated
+from the FastAPI app **without starting a server or calling upstream**.
+Frontend public API types are generated from that schema:
+
+```bash
+cd frontend
+npm run generate:api-types
+```
+
+That command needs the backend Python environment (local `backend/.venv` or
+CI `pip install -r backend/requirements.txt`). It does not need a live API key
+or WeatherAI/Photon. Do not edit `frontend/lib/generated/api-schema.ts`.
+`lib/types.ts` holds stable aliases (`WeatherResponse`, `GeocodeResult`, …).
+CI fails if generated output drifts from git.
+
 ### Running Tests
 
 ```bash
 # Backend
 cd backend && source .venv/bin/activate
-ruff check app/ tests/
+ruff check app/ tests/ scripts/
 pytest --cov=app --cov-report=term-missing
 
 # Frontend unit + production build
 cd frontend
+npm run generate:api-types   # needs backend Python env (venv or CI python)
 npm test
 npm run typecheck
 npm run lint
@@ -77,8 +95,9 @@ npm run test:e2e                  # builds (locally) then next start on :3100
 ```
 
 CI (`.github/workflows/ci.yml`) runs backend ruff + pytest with coverage, and
-frontend lint, `tsc --noEmit`, Vitest, **production build**, and Playwright on
-every push and pull request. See `DOCS/testing.md`.
+frontend generated-API-type drift check, lint, `tsc --noEmit`, Vitest,
+**production build**, and Playwright on every push and pull request. See
+`DOCS/testing.md`.
 
 ## Features
 
@@ -114,6 +133,7 @@ Query parameters: `lat` (required), `lon` (required), `days` (1-7),
 - **Two-service architecture**: API key never reaches the browser.
 - **Single cache layer**: FastAPI owns caching; Next.js uses `cache: "no-store"` to avoid double-caching.
 - **Two-layer data models**: Upstream models (raw API) vs public contract (application shape) — decoupled so upstream changes don't silently propagate.
+- **Generated public API types**: FastAPI Pydantic models → OpenAPI → `frontend/lib/generated/api-schema.ts`. Aliases in `lib/types.ts`. Frontend-only types stay handwritten.
 - **Typed error handling**: Each upstream error (401, 429, 500, 503, timeout) maps to a specific typed exception with distinct HTTP response.
 - **City search via Photon**: WeatherAI Free is coordinates-only. FastAPI geocodes place names with OpenStreetMap Photon, then calls `/v1/weather` with lat/lon. The browser never talks to Photon or WeatherAI.
 - **Coordinates are identity**: shareable URLs are `/?lat=&lon=`. Place names are not the weather key.
@@ -134,7 +154,7 @@ See `DOCS/` for architecture, API reference, testing, build plan, interview prep
 
 ## Known Limitations
 
-- TypeScript types are manually synced with backend Pydantic models
+- Frontend-only types (UI state, preferences, recents/favorites) remain handwritten; only the FastAPI public contract is generated
 - WeatherAI Free has no city-name weather endpoint; place search is Photon via FastAPI
 - Optional current extras are omitted from the UI when upstream does not send them
 - In-memory cache resets on backend restart

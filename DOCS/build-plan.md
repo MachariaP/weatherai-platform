@@ -25,6 +25,8 @@ Phase-by-phase plan for the WeatherAI QA project.
   mocked `/api/*`, plus `npm run build` in CI.
 - **Phase D (forecast range + saved places)** — UI for existing `days`, and
   local favorites. Later phases are not in this increment.
+- **Phase E (generated public API types)** — FastAPI OpenAPI → TypeScript;
+  no product features. Phase F is not in this increment.
 
 ---
 
@@ -50,7 +52,7 @@ Phase-by-phase plan for the WeatherAI QA project.
 
 ## Phase 3: Next.js Data Boundary ✅
 
-- TypeScript types mirroring the `Weather*` contract
+- TypeScript types mirroring the `Weather*` contract (later generated from OpenAPI in Phase E)
 - `api-client.ts` — server-side fetch to FastAPI
 - `/api/weather` route handler — validates params, delegates, forwards `X-Cache`
 - `cache: "no-store"` to avoid double-caching
@@ -108,3 +110,10 @@ Phase-by-phase plan for the WeatherAI QA project.
 - Forecast range preference (3/5/7 days, default 7) using existing FastAPI `days`
 - Local saved places (`localStorage`, max 20, coordinate identity)
 - No backend product change; extra pytest coverage that `days` is part of the cache key
+
+## Phase E: Generated public API types
+
+- FastAPI `response_model` for public weather/geocode/error/health schemas
+- `openapi-typescript` generates `frontend/lib/generated/api-schema.ts`
+- `npm run generate:api-types` / CI drift check
+- Frontend-only types remain handwritten
