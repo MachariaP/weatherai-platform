@@ -145,7 +145,8 @@ class ForecastDay(BaseModel):
     date: str
     temp_max: float
     temp_min: float
-    precipitation: float
+    # Amount (not probability). 0.0 is verified zero; null is unavailable.
+    precipitation: float | None = None
     weather_code: int
     weather_description: str
 
@@ -153,7 +154,8 @@ class ForecastDay(BaseModel):
 class HourlyForecast(BaseModel):
     time: str
     temperature: float
-    precipitation: float
+    # Amount (not probability). 0.0 is verified zero; null is unavailable.
+    precipitation: float | None = None
     weather_code: int
     weather_description: str
 

@@ -82,9 +82,12 @@ def precip_last_24h(
         if when is None:
             continue
         if start < when <= anchor:
-            if hour.precipitation == hour.precipitation:
-                total += hour.precipitation
-                counted = True
+            amount = hour.precipitation
+            if amount is None or amount != amount:
+                # Missing is not zero: skip the hour rather than invent 0.0.
+                continue
+            total += amount
+            counted = True
     return total if counted else None
 
 
@@ -111,7 +114,7 @@ def normalize_weather(
         HourlyForecast(
             time=_s(h.time),
             temperature=_f(h.temp),
-            precipitation=_f(h.precipitation),
+            precipitation=_optional_float(h.precipitation),
             weather_code=_i(h.weathercode),
             weather_description=_describe_code(h.weathercode),
         )
@@ -141,7 +144,7 @@ def normalize_weather(
                 date=_s(d.date),
                 temp_max=_f(d.temp_max),
                 temp_min=_f(d.temp_min),
-                precipitation=_f(d.precipitation),
+                precipitation=_optional_float(d.precipitation),
                 weather_code=_i(d.weathercode),
                 weather_description=_describe_code(d.weathercode),
             )
