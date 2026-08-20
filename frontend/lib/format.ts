@@ -65,9 +65,21 @@ export function formatDate(iso: string | null): string | null {
   return date.toLocaleDateString("en", { month: "short", day: "numeric" });
 }
 
-export function formatPrecip(value: number): string {
-  if (value <= 0) return "";
-  return `${value >= 1 ? Math.round(value) : value.toFixed(1)} mm`;
+/**
+ * Label precipitation using the backend-provided number.
+ * Does not convert mm ↔ in — FastAPI already returns the requested units.
+ */
+export function formatPrecip(value: number, units: Units = "metric"): string {
+  if (!Number.isFinite(value) || value <= 0) return "";
+  const amount = value >= 1 ? String(Math.round(value)) : value.toFixed(1);
+  return `${amount} ${units === "imperial" ? "in" : "mm"}`;
+}
+
+export function formatForecastDate(dateStr: string): string | null {
+  if (!dateStr?.trim()) return null;
+  const date = new Date(dateStr.includes("T") ? dateStr : `${dateStr}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toLocaleDateString("en", { month: "short", day: "numeric" });
 }
 
 export function isCurrentHour(timeStr: string): boolean {
