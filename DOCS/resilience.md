@@ -1,8 +1,9 @@
-# Backend resilience (Phase F)
+# Backend resilience (Phase F + G)
 
 Process-local controls around WeatherAI. They are **not** shared across
-multiple FastAPI workers. Redis belongs to a later phase if the deployment
-needs shared state.
+multiple FastAPI workers. The selected production topology is **one uvicorn
+worker on one instance**, so Redis is **not required**. See
+`DOCS/deployment.md`.
 
 ## Request flow
 
@@ -23,6 +24,30 @@ GET /weather
 `/health`, `/geocode`, `/reverse`, and `/geolocate` are not behind this
 limiter or breaker. They still get request IDs and `http_request` logs.
 
+## Process-local state
+
+| Component | Implementation | Single process | 2 workers | 2 replicas | Shared state needed? |
+|---|---|---|---|---|---|
+| Weather cache | `InMemoryCache` module dict, lazy TTL | HIT after first MISS | Duplicate MISSes / quota | Same | No for 1×1; yes if scaled |
+| Geocode cache | separate `InMemoryCache` | HIT after first search | Duplicate Photon calls | Same | No for 1×1 |
+| Rate limiter | sliding window + `threading.Lock` | One uncached budget | Each worker has a full budget | Same | No for 1×1; yes if scaled |
+| Circuit breaker | in-process state machine + lock | One OPEN/CLOSED | Independent; one worker can still call WeatherAI | Same | No (keep local even if cache is later shared) |
+
+Concurrency: limiter and breaker use short `threading.Lock` sections (async
+FastAPI, one process). They do not sleep under the lock.
+
+Lifecycle: module singletons (`_cache`, `get_weather_limiter()`,
+`get_weather_breaker()`). They live until process exit.
+
+## Restart behavior (memory mode)
+
+Process restart or Render cold start **resets** cache, limiter, and breaker.
+The next weather request is a MISS. The breaker starts CLOSED. Limiter
+allowance is full. This is intentional for the 1×1 topology.
+
+If Redis were added later, cache/limiter entries would survive process restart
+until TTL. The breaker would stay local unless explicitly redesigned.
+
 ## Application rate limit
 
 - Key: first `X-Forwarded-For` hop, else `request.client.host`
@@ -37,6 +62,11 @@ limiter or breaker. They still get request IDs and `http_request` logs.
 Defaults: `RATE_LIMIT_REQUESTS=60` per `RATE_LIMIT_WINDOW_SECONDS=60`.
 
 Loopback/dev traffic often shares one identity (`127.0.0.1` / `testclient`).
+
+Behind Next.js, FastAPI usually sees the **frontend server egress IP**, not
+the browser IP, unless `X-Forwarded-For` is present. That makes the limiter a
+**service-wide uncached budget**, which still protects WeatherAI quota. It is
+not a per-user account quota (there are no accounts).
 
 ## Circuit breaker
 
@@ -54,6 +84,23 @@ Not counted: 400, 401, 403, 429, malformed 200.
 
 Defaults: `CIRCUIT_FAILURE_THRESHOLD=5`, `CIRCUIT_COOLDOWN_SECONDS=30`.
 
+A shared/distributed breaker is **not** planned even if cache later moves to
+Redis: a local breaker lets one process recover independently and avoids
+coordination bugs. Duplicate probes across replicas are acceptable at this
+scale.
+
+## When Redis becomes necessary
+
+Not now. Add it only after changing the topology to multiple workers or
+replicas:
+
+1. Shared **weather** cache (normalized `WeatherResponse` JSON, TTL, corrupt
+   entry = MISS, Redis down = log + MISS, do not fail liveness).
+2. Shared **uncached** limiter (atomic increment; cache HIT still free).
+3. Leave the circuit breaker process-local unless a later review says otherwise.
+
+Unit tests must keep using in-memory fakes. Do not require Redis to run CI.
+
 ## Logging
 
 JSON lines on the `app.events` logger. Typical events:
@@ -66,5 +113,5 @@ Correlation: `X-Request-ID`. Next.js `/api/weather` forwards a safe incoming
 ID or generates one. FastAPI reuses it when valid.
 
 Never logged: API keys, `Authorization` / Bearer values, cookies, weather
-payloads, raw upstream bodies. Coordinates are not written on the default
-`http_request` line (path + request ID only).
+payloads, raw upstream bodies, Redis URLs (none configured). Coordinates are
+not written on the default `http_request` line (path + request ID only).
