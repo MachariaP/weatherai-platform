@@ -8,6 +8,7 @@ How this project is tested, and which layer owns which checks.
 Backend
   ├── pytest unit tests          (normalize, cache, client, geocode)
   ├── route/integration tests    (FastAPI + respx; no live WeatherAI)
+  ├── resilience tests           (rate limiter, circuit breaker, request IDs)
   └── optional real WeatherAI smoke  (backend/tests/smoke_real_api.py — not CI)
 
 Frontend

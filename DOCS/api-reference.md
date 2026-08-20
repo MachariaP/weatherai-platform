@@ -97,7 +97,9 @@ params, and does not invalidate cache from the browser. A response with
 | Header | Values | Description |
 |---|---|---|
 | `X-Cache` | `HIT` or `MISS` | Whether the FastAPI weather cache served this response |
-| `X-RateLimit-Reset` | unix epoch (429 only) | When the upstream quota resets; only present if upstream provided it |
+| `X-Request-ID` | opaque id | Correlation ID; Next.js forwards or generates, FastAPI echoes |
+| `Retry-After` | seconds (application 429) | When to retry after `rate_limited` |
+| `X-RateLimit-Reset` | unix epoch (upstream 429 only) | When the upstream quota resets; only present if upstream provided it |
 
 **Error Responses:**
 
@@ -105,10 +107,12 @@ params, and does not invalidate cache from the browser. A response with
 |---|---|---|
 | 400 | `bad_request` | Invalid or missing query params, or upstream rejected the request |
 | 403 | `plan_restriction` | WeatherAI returned 403 — feature not on the current plan |
-| 429 | `rate_limit` | Upstream rate limit / quota exhausted |
+| 429 | `rate_limited` | Application limiter: too many uncached weather requests |
+| 429 | `rate_limit` | Upstream WeatherAI quota exhausted |
 | 502 | `upstream_auth` | WeatherAI rejected credentials (upstream 401) — never returned as HTTP 401 |
 | 502 | `upstream_error` | Unrecoverable upstream 5xx after retries, or unclassified error |
 | 502 | `malformed_response` | Non-JSON, non-object, or data that failed normalization |
+| 503 | `upstream_unavailable` | WeatherAI circuit is open (cache HIT still served) |
 | 503 | `backend_unavailable` | Next.js could not reach FastAPI |
 | 504 | `backend_timeout` | Next.js did not receive a FastAPI response in time |
 | 504 | `timeout` | WeatherAI did not respond within the backend timeout |
@@ -199,3 +203,6 @@ cd frontend && npm run generate:api-types
 Do not edit `frontend/lib/generated/api-schema.ts`. Stable aliases live in
 `frontend/lib/types.ts`. Upstream WeatherAI / Photon / ipwho.is models are not
 published in OpenAPI.
+
+See `DOCS/resilience.md` for cache/limiter/circuit ordering, logging, and
+the process-local limitation.

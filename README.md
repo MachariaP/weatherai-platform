@@ -135,6 +135,7 @@ Query parameters: `lat` (required), `lon` (required), `days` (1-7),
 - **Two-layer data models**: Upstream models (raw API) vs public contract (application shape) — decoupled so upstream changes don't silently propagate.
 - **Generated public API types**: FastAPI Pydantic models → OpenAPI → `frontend/lib/generated/api-schema.ts`. Aliases in `lib/types.ts`. Frontend-only types stay handwritten.
 - **Typed error handling**: Each upstream error (401, 429, 500, 503, timeout) maps to a specific typed exception with distinct HTTP response.
+- **WeatherAI protection**: in-memory rate limit on cache misses, circuit breaker on repeated 5xx/timeout; see `DOCS/resilience.md`.
 - **City search via Photon**: WeatherAI Free is coordinates-only. FastAPI geocodes place names with OpenStreetMap Photon, then calls `/v1/weather` with lat/lon. The browser never talks to Photon or WeatherAI.
 - **Coordinates are identity**: shareable URLs are `/?lat=&lon=`. Place names are not the weather key.
 - **Recent locations**: `localStorage` only (max 8). Weather payloads are never stored there.
@@ -150,7 +151,7 @@ Query parameters: `lat` (required), `lon` (required), `days` (1-7),
 
 ## Documentation
 
-See `DOCS/` for architecture, API reference, testing, build plan, interview prep, and challenge log.
+See `DOCS/` for architecture, API reference, testing, build plan, interview prep, challenge log, and resilience.
 
 ## Known Limitations
 
@@ -158,6 +159,7 @@ See `DOCS/` for architecture, API reference, testing, build plan, interview prep
 - WeatherAI Free has no city-name weather endpoint; place search is Photon via FastAPI
 - Optional current extras are omitted from the UI when upstream does not send them
 - In-memory cache resets on backend restart
+- Application rate limiter and circuit breaker are **process-local** (not shared across workers; no Redis in this phase)
 - AI summaries consume a separate, smaller quota (200/mo vs 1000/mo)
 - AI summary availability depends on the upstream plan: on the currently tested
   Free plan, `ai=true` requests succeed but the upstream returned no AI summary

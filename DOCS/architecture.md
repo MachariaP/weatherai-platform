@@ -68,6 +68,9 @@ subject to change without an explicit architecture decision.
 
 - **WeatherAI client** — Bearer auth, timeout, query params (`lat`, `lon`, `days`, `units`, `ai`, `lang`)
 - **Retries** — exponential backoff for upstream 5xx only
+- **Application rate limit** — uncached WeatherAI calls only; cache HIT bypasses
+- **Circuit breaker** — fail-fast after repeated WeatherAI 500/503/timeout/network
+- **Structured logs** — JSON events with `X-Request-ID`
 - **Error handling** — maps upstream failures to structured responses (never 401 to the browser)
 - **Normalization** — `Upstream*` models → public `Weather*` contract
 - **In-memory TTL cache** — weather keyed on lat/lon/days/units/ai/lang; geocode keyed on query
@@ -79,6 +82,7 @@ subject to change without an explicit architecture decision.
 
 - **Thin proxies** — validate query params, delegate to FastAPI, `cache: "no-store"`
 - **Forwards `X-Cache`** — HIT/MISS from FastAPI on `/api/weather`
+- **Forwards `X-Request-ID`** — generated or passed through on `/api/weather`
 - **Forwards `X-Forwarded-For`** — on `/api/geolocate` only, so FastAPI can look up a public client IP
 - **UI** — React consumes the public `WeatherResponse` / geocode contracts
 
@@ -142,3 +146,6 @@ shareable `/?lat=&lon=` URL.
 `LocationProvider` is the single client-side location source of truth. Search,
 recents, GPS/IP, and the URL all write through it; the URL is synchronized only
 after a committed location selection, not while the user is typing.
+
+Limiter, breaker, and weather cache state are **in-process only**. See
+`DOCS/resilience.md`.

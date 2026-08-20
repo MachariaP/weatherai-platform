@@ -25,8 +25,8 @@ Phase-by-phase plan for the WeatherAI QA project.
   mocked `/api/*`, plus `npm run build` in CI.
 - **Phase D (forecast range + saved places)** — UI for existing `days`, and
   local favorites. Later phases are not in this increment.
-- **Phase E (generated public API types)** — FastAPI OpenAPI → TypeScript;
-  no product features. Phase F is not in this increment.
+- **Phase F (observability + rate limit + circuit breaker)** — process-local
+  WeatherAI protection and JSON request logs. Phase G is not in this increment.
 
 ---
 
@@ -117,3 +117,10 @@ Phase-by-phase plan for the WeatherAI QA project.
 - `openapi-typescript` generates `frontend/lib/generated/api-schema.ts`
 - `npm run generate:api-types` / CI drift check
 - Frontend-only types remain handwritten
+
+## Phase F: Observability, rate limiting, circuit breaker
+
+- JSON request logs with `X-Request-ID`
+- Application limiter on uncached WeatherAI calls (cache HIT bypass)
+- Circuit breaker around retried WeatherAI calls
+- Process-local only; see `DOCS/resilience.md`
