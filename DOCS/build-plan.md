@@ -20,7 +20,9 @@ Phase-by-phase plan for the WeatherAI QA project.
   URLs.
 - **Phase B (precipitation + refresh)** — honest optional precipitation
   amounts (zero is data; missing is not zero) and a last-updated / Refresh
-  control that respects the FastAPI TTL cache. Later phases are not in this
+  control that respects the FastAPI TTL cache.
+- **Phase C (browser E2E + CI build gate)** — Playwright journeys against
+  mocked `/api/*`, plus `npm run build` in CI. Later phases are not in this
   increment.
 
 ---
@@ -93,3 +95,9 @@ Phase-by-phase plan for the WeatherAI QA project.
 - Comprehensive README (setup, env vars, architecture overview)
 - Deployment config (Docker or platform-specific)
 - Final cleanup and polish
+
+## Phase C: Browser E2E + CI build gate
+
+- Playwright Chromium (+ one mobile viewport) against mocked Next.js `/api/*`
+- CI production build gate and a separate Playwright job
+- Live WeatherAI acceptance remains manual — see `testing.md`

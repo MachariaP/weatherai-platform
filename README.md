@@ -30,7 +30,7 @@ potentially unavailable external dependency.
 
 - **Frontend**: Next.js 16, React 19, TypeScript, Tailwind CSS
 - **Backend**: FastAPI, Python 3.12, Pydantic, httpx
-- **Testing**: Vitest + React Testing Library (frontend), pytest + respx (backend)
+- **Testing**: Vitest + React Testing Library (frontend), Playwright (browser E2E), pytest + respx (backend)
 
 ## Setup
 
@@ -64,16 +64,21 @@ cd backend && source .venv/bin/activate
 ruff check app/ tests/
 pytest --cov=app --cov-report=term-missing
 
-# Frontend
+# Frontend unit + production build
 cd frontend
 npm test
 npm run typecheck
 npm run lint
 npm run build
+
+# Deterministic browser E2E (mocks /api/*; no live WeatherAI)
+npx playwright install chromium   # once
+npm run test:e2e                  # builds (locally) then next start on :3100
 ```
 
 CI (`.github/workflows/ci.yml`) runs backend ruff + pytest with coverage, and
-frontend lint, `tsc --noEmit`, and vitest on every push and pull request.
+frontend lint, `tsc --noEmit`, Vitest, **production build**, and Playwright on
+every push and pull request. See `DOCS/testing.md`.
 
 ## Features
 
@@ -121,7 +126,7 @@ Query parameters: `lat` (required), `lon` (required), `days` (1-7),
 
 ## Documentation
 
-See `DOCS/` for detailed architecture, API reference, build plan, interview prep, and challenge log.
+See `DOCS/` for architecture, API reference, testing, build plan, interview prep, and challenge log.
 
 ## Known Limitations
 
