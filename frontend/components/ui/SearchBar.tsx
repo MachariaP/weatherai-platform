@@ -67,10 +67,12 @@ export function SearchBar() {
   const showResults = open && trimmedQuery.length >= 2 && !coordQuery;
   const listOpen = showRecents || showResults;
 
+  // Depend on trimmedQuery only. parseLatLonQuery returns a new object each
+  // render, so listing coordQuery would retrigger setState every paint.
   useEffect(() => {
     if (coordQuery || trimmedQuery.length < 2 || committedQueryRef.current === trimmedQuery) {
       abortRef.current?.abort();
-      setResults([]);
+      setResults((prev) => (prev.length === 0 ? prev : []));
       setSearching(false);
       setSearched(false);
       return;
@@ -131,7 +133,8 @@ export function SearchBar() {
     }, DEBOUNCE_MS);
 
     return () => window.clearTimeout(handle);
-  }, [trimmedQuery, coordQuery]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- coordQuery is derived from trimmedQuery
+  }, [trimmedQuery]);
 
   useEffect(() => {
     function onPointerDown(event: MouseEvent) {

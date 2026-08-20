@@ -147,15 +147,13 @@ describe("SearchBar", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("selects a highlighted suggestion with Enter", async () => {
-    nairobiFetch([{ lat: -1.2864, lon: 36.8172, label: "Nairobi, Kenya" }]);
+  it("does not geocode when the query is already coordinates", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
     renderSearch();
-    const input = screen.getByLabelText("Location or coordinates");
-    fireEvent.change(input, { target: { value: "Nairobi" } });
-    await act(async () => {
-      await new Promise((r) => setTimeout(r, 350));
-    });
-    fireEvent.keyDown(input, { key: "Enter" });
-    expect(screen.getByText("lat:-1.2864 lon:36.8172")).toBeDefined();
+    await typeQuery("-1.2921, 36.8219");
+    expect(fetchMock).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Get Weather" }));
+    expect(screen.getByText("lat:-1.2921 lon:36.8219")).toBeDefined();
   });
 });
