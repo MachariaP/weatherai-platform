@@ -56,15 +56,21 @@ Visit `http://localhost:3000` — enter coordinates or click "My Location".
 ### Running Tests
 
 ```bash
-# Backend (81 tests)
-cd backend && pytest
+# Backend (81 tests, ~99% coverage of app/)
+cd backend && source .venv/bin/activate
+ruff check app/ tests/
+pytest --cov=app --cov-report=term-missing
 
-# Frontend (47 tests)
-cd frontend && npm test
-
-# Lint
-cd frontend && npm run lint
+# Frontend (191 tests)
+cd frontend
+npm test
+npm run typecheck
+npm run lint
+npm run build
 ```
+
+CI (`.github/workflows/ci.yml`) runs backend ruff + pytest with coverage, and
+frontend lint, `tsc --noEmit`, and vitest on every push and pull request.
 
 ## Features
 
