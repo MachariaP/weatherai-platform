@@ -99,7 +99,7 @@ describe("useWeather", () => {
     expect(result.current.cacheStatus).toBe("MISS");
   });
 
-  it("calls GET /api/weather and never WeatherAI", async () => {
+  it("calls GET /api/weather with days=7 by default and never WeatherAI", async () => {
     const mockFetch = vi.fn().mockResolvedValue(okResponse());
     vi.stubGlobal("fetch", mockFetch);
 
@@ -109,6 +109,7 @@ describe("useWeather", () => {
 
     const calledUrl = String(mockFetch.mock.calls[0][0]);
     expect(calledUrl.startsWith("/api/weather?")).toBe(true);
+    expect(calledUrl).toContain("days=7");
     expect(calledUrl).not.toContain("weather-ai");
     expect(mockFetch.mock.calls[0][1]).toMatchObject({ cache: "no-store" });
   });
@@ -407,7 +408,57 @@ describe("useWeather", () => {
     await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(2));
     expect(String(mockFetch.mock.calls[1][0])).toContain("units=imperial");
     expect(String(mockFetch.mock.calls[1][0])).toContain("ai=true");
+    expect(String(mockFetch.mock.calls[1][0])).toContain("days=7");
     expect(String(mockFetch.mock.calls[1][0])).not.toMatch(/refresh=|force=|no_cache=/);
+  });
+
+  it("refetches when forecast days change and clears the previous payload", async () => {
+    const seven: WeatherResponse = {
+      ...MOCK_WEATHER,
+      daily: Array.from({ length: 7 }, (_, i) => ({
+        date: `2026-08-${String(i + 19).padStart(2, "0")}`,
+        temp_max: 20,
+        temp_min: 10,
+        precipitation: 0,
+        weather_code: 1,
+        weather_description: `Day ${i + 1}`,
+      })),
+    };
+    const three: WeatherResponse = {
+      ...seven,
+      daily: seven.daily.slice(0, 3),
+    };
+    let resolveSecond: ((value: unknown) => void) | undefined;
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValueOnce(okResponse(seven))
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveSecond = resolve;
+          })
+      );
+    vi.stubGlobal("fetch", mockFetch);
+
+    const { result, rerender } = renderHook(
+      ({ days }: { days: number }) => useWeather(-1.29, 36.82, "metric", false, days),
+      { initialProps: { days: 7 } }
+    );
+
+    await waitFor(() => expect(result.current.data?.daily).toHaveLength(7));
+    expect(String(mockFetch.mock.calls[0][0])).toContain("days=7");
+
+    rerender({ days: 3 });
+    await waitFor(() => expect(result.current.data).toBeNull());
+    expect(result.current.isLoading).toBe(true);
+    expect(String(mockFetch.mock.calls[1][0])).toContain("days=3");
+    expect(String(mockFetch.mock.calls[1][0])).toContain("units=metric");
+    expect(String(mockFetch.mock.calls[1][0])).not.toContain("ai=true");
+
+    await act(async () => {
+      resolveSecond?.(okResponse(three));
+    });
+    await waitFor(() => expect(result.current.data?.daily).toHaveLength(3));
   });
 
   it("treats a success body that is not JSON as a malformed response", async () => {

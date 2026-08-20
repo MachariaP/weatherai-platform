@@ -182,6 +182,25 @@ def test_different_params_are_not_cached_together(monkeypatch: pytest.MonkeyPatc
 
 
 @respx.mock
+def test_days_separates_cache_identity(monkeypatch: pytest.MonkeyPatch):
+    _patch_key(monkeypatch)
+    route = respx.get(WEATHER_URL).mock(
+        return_value=httpx.Response(200, json=VALID_UPSTREAM)
+    )
+    base = {"lat": 12.34, "lon": 56.78, "units": "metric", "ai": False, "lang": "en"}
+
+    first = client.get("/weather", params={**base, "days": 3})
+    again = client.get("/weather", params={**base, "days": 3})
+    other = client.get("/weather", params={**base, "days": 7})
+
+    assert first.status_code == 200
+    assert first.headers.get("x-cache") == "MISS"
+    assert again.headers.get("x-cache") == "HIT"
+    assert other.headers.get("x-cache") == "MISS"
+    assert route.call_count == 2
+
+
+@respx.mock
 def test_missing_precipitation_serializes_as_null_not_zero(monkeypatch: pytest.MonkeyPatch):
     _patch_key(monkeypatch)
     payload = {
