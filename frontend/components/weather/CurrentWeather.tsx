@@ -1,7 +1,7 @@
 "use client";
 
 import type { CurrentWeather as CurrentWeatherData } from "@/lib/types";
-import { getWeatherIcon } from "@/lib/weather-icons";
+import { WeatherIcon, getWeatherIconName } from "@/lib/weather-icons";
 
 interface Props {
   data: CurrentWeatherData;
@@ -13,7 +13,7 @@ interface Props {
 export function CurrentWeather({ data, units, location, cacheStatus }: Props) {
   const tempUnit = units === "metric" ? "°C" : "°F";
   const windUnit = units === "metric" ? "km/h" : "mph";
-  const icon = getWeatherIcon(data.weather_code, data.is_day);
+  const iconName = getWeatherIconName(data.weather_code, data.is_day);
 
   return (
     <div className="rounded-xl border border-[var(--card-border)] bg-[var(--card)] p-6">
@@ -40,7 +40,9 @@ export function CurrentWeather({ data, units, location, cacheStatus }: Props) {
       </div>
 
       <div className="flex items-center gap-4 mb-4">
-        <span className="text-6xl">{icon}</span>
+        <span className="text-6xl">
+          <WeatherIcon name={iconName} className="h-16 w-16" />
+        </span>
         <div>
           <p className="text-5xl font-light tabular-nums">
             {Math.round(data.temperature)}

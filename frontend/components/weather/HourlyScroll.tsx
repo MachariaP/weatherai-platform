@@ -1,7 +1,7 @@
 "use client";
 
 import type { HourlyForecast } from "@/lib/types";
-import { getWeatherIcon } from "@/lib/weather-icons";
+import { WeatherIcon, getWeatherIconName } from "@/lib/weather-icons";
 
 interface Props {
   hours: HourlyForecast[];
@@ -33,7 +33,10 @@ export function HourlyScroll({ hours, units }: Props) {
               {formatHour(hour.time)}
             </p>
             <p className="text-xl mb-1">
-              {getWeatherIcon(hour.weather_code)}
+              <WeatherIcon
+                name={getWeatherIconName(hour.weather_code)}
+                className="h-7 w-7"
+              />
             </p>
             <p className="text-sm font-medium">
               {Math.round(hour.temperature)}{tempUnit}

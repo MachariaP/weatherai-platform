@@ -1,7 +1,7 @@
 "use client";
 
 import type { ForecastDay } from "@/lib/types";
-import { getWeatherIcon } from "@/lib/weather-icons";
+import { WeatherIcon, getWeatherIconName } from "@/lib/weather-icons";
 
 interface Props {
   day: ForecastDay;
@@ -22,14 +22,16 @@ function formatDayName(dateStr: string): string {
 
 export function ForecastCard({ day, units }: Props) {
   const tempUnit = units === "metric" ? "°" : "°";
-  const icon = getWeatherIcon(day.weather_code);
+  const iconName = getWeatherIconName(day.weather_code);
 
   return (
     <div className="rounded-xl border border-[var(--card-border)] bg-[var(--card)] p-4 text-center">
       <p className="text-xs font-medium text-[var(--muted)] mb-2">
         {formatDayName(day.date)}
       </p>
-      <p className="text-3xl mb-2">{icon}</p>
+      <p className="text-3xl mb-2">
+        <WeatherIcon name={iconName} className="h-9 w-9" />
+      </p>
       <p className="text-sm font-medium">
         {Math.round(day.temp_max)}{tempUnit}{" "}
         <span className="text-[var(--muted)]">

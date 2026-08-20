@@ -1,28 +1,45 @@
 import { describe, it, expect } from "vitest";
-import { getWeatherIcon } from "@/lib/weather-icons";
+import { getWeatherIconName } from "@/lib/weather-icons";
 
-describe("getWeatherIcon", () => {
-  it("returns sun for clear sky during day", () => {
-    expect(getWeatherIcon(0, true)).toBe("☀️");
+describe("getWeatherIconName", () => {
+  it("maps clear sky to clear-day during day", () => {
+    expect(getWeatherIconName(0, true)).toBe("clear-day");
   });
 
-  it("returns moon for clear sky at night", () => {
-    expect(getWeatherIcon(0, false)).toBe("🌙");
+  it("maps clear sky to clear-night at night", () => {
+    expect(getWeatherIconName(0, false)).toBe("clear-night");
   });
 
-  it("returns cloud for overcast", () => {
-    expect(getWeatherIcon(3)).toBe("☁️");
+  it("maps partly cloudy codes to partly-day/partly-night by is_day", () => {
+    expect(getWeatherIconName(1, true)).toBe("partly-day");
+    expect(getWeatherIconName(2, false)).toBe("partly-night");
   });
 
-  it("returns rain for moderate rain", () => {
-    expect(getWeatherIcon(63)).toBe("🌧️");
+  it("maps overcast to cloudy", () => {
+    expect(getWeatherIconName(3)).toBe("cloudy");
   });
 
-  it("returns thunderstorm for code 95", () => {
-    expect(getWeatherIcon(95)).toBe("⛈️");
+  it("maps fog codes to fog", () => {
+    expect(getWeatherIconName(45)).toBe("fog");
+    expect(getWeatherIconName(48)).toBe("fog");
   });
 
-  it("returns fallback for unknown code", () => {
-    expect(getWeatherIcon(999)).toBe("🌡️");
+  it("maps rain codes to rain", () => {
+    expect(getWeatherIconName(63)).toBe("rain");
+    expect(getWeatherIconName(80)).toBe("rain");
+  });
+
+  it("maps snow codes to snow", () => {
+    expect(getWeatherIconName(71)).toBe("snow");
+    expect(getWeatherIconName(75)).toBe("snow");
+  });
+
+  it("maps thunderstorm codes to storm", () => {
+    expect(getWeatherIconName(95)).toBe("storm");
+    expect(getWeatherIconName(99)).toBe("storm");
+  });
+
+  it("falls back to unknown for unrecognized codes", () => {
+    expect(getWeatherIconName(999)).toBe("unknown");
   });
 });
