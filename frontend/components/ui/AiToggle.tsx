@@ -13,7 +13,7 @@ export function AiToggle() {
       aria-checked={aiEnabled}
       aria-label="AI insights"
       onClick={() => setAiEnabled(!aiEnabled)}
-      className="focus-ring inline-flex h-10 shrink-0 items-center gap-2 rounded-xl border border-border bg-surface px-3 shadow-card transition-colors hover:border-border-strong"
+      className="focus-ring inline-flex h-10 shrink-0 items-center gap-2 rounded-xl border border-border bg-surface px-2 shadow-card transition-colors hover:border-border-strong sm:px-3"
     >
       <SparkleIcon
         className={`h-4 w-4 ${aiEnabled ? "text-accent" : "text-text-muted"}`}

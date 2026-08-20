@@ -29,7 +29,8 @@ export default function RootLayout({
             <Header />
             <main
               id="main"
-              className="mx-auto w-full max-w-6xl flex-1 px-4 pb-16 pt-6 sm:px-6 sm:pt-8"
+              tabIndex={-1}
+              className="mx-auto w-full max-w-6xl flex-1 px-4 pb-16 pt-6 sm:px-6 sm:pt-8 focus:outline-none"
             >
               {children}
             </main>
