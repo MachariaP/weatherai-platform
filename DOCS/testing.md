@@ -84,6 +84,11 @@ Phase D adds representative Playwright journeys for:
 - forecast range 7 → 3 (`days=3` on `/api/weather`, three returned daily rows)
 - saved place: save Nairobi, visit London, return via Saved (no extra geocode)
 
+Advanced exploration adds a short additional set (`exploration.spec.ts` plus
+one mobile drill-down): hourly chart metric switch, forecast-day dialog,
+unified switcher actions, two-favorite compare without `ai=true` or a third
+favorite fetch, and no page-level overflow.
+
 Lower-level storage, limit, and preference fallback details stay in Vitest.
 
 Playwright is a **separate CI job** from lint/Vitest/`tsc` so Chromium install

@@ -147,8 +147,10 @@ UI options 3/5/7). It is sent as FastAPI `days` and is **not** added to the
 shareable `/?lat=&lon=` URL.
 
 `LocationProvider` is the single client-side location source of truth. Search,
-recents, GPS/IP, and the URL all write through it; the URL is synchronized only
-after a committed location selection, not while the user is typing.
+recents, GPS/IP, saved places, compare selection, and the URL all write through
+it; the URL is synchronized only after a committed location selection, not while
+the user is typing. Compare mode reuses `GET /weather` per selected place and
+omits `ai` so comparison does not multiply the AI quota.
 
 Limiter, breaker, and weather cache state are **in-process only**. The
 selected production topology is **one FastAPI worker on one instance**, so

@@ -32,17 +32,19 @@ geocoding (`place_name` on weather, or `/api/geocode`).
 
 ```
 app/layout.tsx                — Inter, providers, header, footer, mobile nav
-├── components/ui/Header      — brand, search, Dashboard/Forecast, My location, settings
+├── components/ui/Header      — brand, location switcher, Dashboard/Forecast, My location, settings
 │   ├── WeatherLogo
-│   ├── SearchBar             — combobox suggestions + recent places + mobile lat/lon
+│   ├── LocationSwitcher      — SearchBar: suggestions, saved/recent, GPS, coordinates, compare
 │   └── MyLocationButton
 ├── components/weather/CurrentConditionsView — empty / loading / error / views
 │   ├── EmptyState
 │   ├── CurrentWeather        — hero + hide-missing metric tiles
 │   ├── AISummary
-│   ├── ForecastGrid/Card
-│   ├── HourlyScroll
-│   └── SettingsPanel         — units + AI preference (not in the header)
+│   ├── ForecastGrid/Card     — daily rows; selected day opens ForecastDaySheet
+│   ├── HourlyScroll          — full hourly strip, current hour aligned
+│   ├── HourlyChart           — next-24h SVG evolution (temperature / precipitation)
+│   ├── CompareView           — explicit two-place comparison (ai omitted)
+│   └── SettingsPanel         — units + AI + saved places + compare entry
 supporting: BottomNav, SiteFooter, ErrorBanner, LoadingSkeleton, icons
 ```
 
@@ -59,8 +61,10 @@ supporting: BottomNav, SiteFooter, ErrorBanner, LoadingSkeleton, icons
 - `PreferencesProvider` — `units`, `aiEnabled`, and `forecastDays` (3/5/7,
   default 7), persisted to `localStorage` (`units`, `ai`, `forecastDays`).
   AI stays disabled by default. Forecast range is not encoded in the URL.
-- `ViewProvider` — dashboard / forecast / insights / settings. One weather
-  payload; views only change layout.
+- `ViewProvider` — dashboard / forecast / insights / settings / compare. One weather
+  payload for the active location; compare fetches separately after explicit
+  selection. Views only change layout except compare, which uses its own
+  `/api/weather` requests (`ai` omitted).
 - `useWeather` — fetches `/api/weather?lat&lon&units&days&ai`, clears data when
   coordinates **or** units/AI/days change, exposes `refetch`.
 
@@ -107,10 +111,13 @@ Inter via `next/font` (`--font-inter`). Hierarchy:
   *Search by coordinates*, capability row (7-day / hourly / AI).
 - **Loading** — 8/4 column skeletons matching the loaded dashboard.
 - **Error** — classified titles, user-safe messages, Retry. No internals.
-- **Loaded dashboard** — 8-col current+hourly, 4-col AI+7-day.
-- **Forecast / AI Insights / Settings** — same payload, different layout.
-  Settings is units, forecast range (3/5/7), AI toggle, and saved places
-  (no extra backend). Those controls are not duplicated in the header.
+- **Loaded dashboard** — 8-col current + hourly strip + hourly evolution chart,
+  4-col AI + 7-day. Daily rows open a drill-down (desktop drawer / mobile sheet)
+  from already-fetched `hourly[]`.
+- **Forecast / AI Insights / Settings / Compare** — Settings is units, forecast
+  range (3/5/7), AI toggle, saved places, and compare entry. Compare loads at
+  most two saved places via `/api/weather` without `ai=true`. Selected forecast
+  day is UI-only (not stored, not in the URL).
 
 ## Metric tiles (hide missing)
 
@@ -130,12 +137,58 @@ clears stale weather immediately.
 Hero heading: `place_name` when reverse geocode succeeded, else the
 location label. Subtitle is always `lat, lon` at 4 decimals.
 
+## Hourly evolution chart
+
+Custom SVG (no chart library). Dashboard window is the **next 24 hourly rows
+from the current hour** (or from the first row if none match). Forecast-day
+drill-down plots **all hourly rows for that date**. Temperature is the
+default metric. Precipitation is offered only when at least one finite amount
+exists, including verified `0`. Hourly wind is not on the public contract, so
+it is not a tab. Values are not converted. The existing hourly strip still
+shows the longer raw timeline.
+
+The dashboard stacks current conditions, hourly, and the daily list below
+`lg` (1024px) so forecast labels stay readable around 768–900px. From `lg`
+up, daily forecast sits in the right column.
+
+## Forecast-day drill-down
+
+Daily rows are buttons. The selected day is React state only. Hourly detail is
+`hourly[]` filtered by the daily `date` prefix (`YYYY-MM-DD`). Days the hourly
+payload does not cover show an honest empty message — they are not invented
+and do not trigger another WeatherAI request. Desktop: right drawer.
+Mobile: bottom sheet. Escape, overlay, and a close button dismiss it.
+
+## Location switcher
+
+Search, saved places, recents, GPS, coordinates, and compare all write
+through `LocationProvider`. The combobox stays in the header so shareable
+search and existing journeys keep working. Opening it shows Saved / Recent /
+Actions (Use my location, Enter coordinates, Compare when two or more places
+are saved). Geocoding remains `Browser → /api/geocode → FastAPI → Photon`.
+
+## Compare mode
+
+Opened from Settings or the switcher. Weather is fetched only for the places
+the user selects, maximum two, via the existing `/api/weather` endpoint with
+`ai` omitted. Favorites are not preloaded. Failures are per card. FastAPI
+cache, rate limiter, and circuit breaker still apply.
+
+## Motion
+
+Open/close, metric tabs, and skeletons use `motion-safe:` transitions.
+`prefers-reduced-motion` already disables pulse/spin in `globals.css`.
+Interaction does not depend on animation.
+
 ## Accessibility
 
 Landmarks (`header`, `main`, `footer`, labeled `nav`s), skip link,
 visible `:focus-visible` rings, labeled inputs, `role="switch"` / 
 `aria-pressed` on toggles. Bottom nav is `lg:hidden` so tablet keeps
 touch tabs; desktop Dashboard / Forecast live in the header from `lg` up.
+The hourly chart has a text summary and metric radios. Forecast drill-down
+is a dialog with focus trap, Escape, and a close button. Compare cards use
+per-location headings and independent loading/error status.
 
 ## Deliberate constraints
 

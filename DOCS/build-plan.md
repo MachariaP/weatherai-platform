@@ -136,3 +136,14 @@ Phase-by-phase plan for the WeatherAI QA project.
 - `/health` remains liveness; no `/ready` endpoint
 - Phase H is the actual provision/deploy step
 
+## Advanced exploration UI (frontend)
+
+- Interactive hourly SVG chart (dashboard: next 24 hours from the current
+  hour; drill-down: all hours for the selected date; temperature and
+  precipitation only — hourly wind is not on the public contract)
+- Forecast-day drill-down from existing `hourly[]` (honest empty state when a
+  later daily row has no hourly coverage)
+- Unified location switcher (search, saved, recent, GPS, coordinates, compare)
+- Explicit two-place compare via existing `/api/weather`, `ai` omitted
+- Subtle `motion-safe` transitions; no new backend contract
+

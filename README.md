@@ -104,6 +104,10 @@ frontend generated-API-type drift check, lint, `tsc --noEmit`, Vitest,
 - Current weather with temperature, wind, and conditions
 - 7-day forecast by default, with 3- or 5-day range in Settings / forecast header
 - Hourly outlook with precipitation amounts when available
+- Hourly evolution chart (next 24 hours; temperature / precipitation)
+- Forecast-day drill-down from existing hourly rows (no extra WeatherAI call)
+- Unified location switcher (search, saved, recent, GPS, coordinates)
+- Compare two saved places (explicit selection; `ai` omitted; FastAPI cache still applies)
 - Observed time and Refresh (revalidates through FastAPI cache; does not force WeatherAI)
 - Place-name search with multiple suggestions (Photon via FastAPI)
 - Recent locations (localStorage, max 8; weather payloads are never stored)
