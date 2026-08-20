@@ -143,13 +143,15 @@ function bootFromUrl(): { location: Location | null; error: string | null; recen
  *
  * Coordinates are the weather identity. Labels, recents, and URL params are
  * convenience. This provider never calls WeatherAI.
+ *
+ * URL and localStorage are applied after mount so SSR HTML matches the first
+ * client render (shareable `/?lat=&lon=` must not hydrate-mismatch).
  */
 export function LocationProvider({ children }: { children: ReactNode }) {
-  const [boot] = useState(bootFromUrl);
-  const [location, setLocationState] = useState<Location | null>(boot.location);
+  const [location, setLocationState] = useState<Location | null>(null);
   const [detecting, setDetecting] = useState(false);
-  const [error, setError] = useState<string | null>(boot.error);
-  const [recents, setRecents] = useState<Location[]>(boot.recents);
+  const [error, setError] = useState<string | null>(null);
+  const [recents, setRecents] = useState<Location[]>([]);
 
   const applyLocation = useCallback((loc: Location, history: "push" | "replace" | "none") => {
     const next: Location = {
@@ -181,8 +183,19 @@ export function LocationProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (boot.location) syncUrl(boot.location, "replace");
-  }, [boot.location]);
+    const frame = window.requestAnimationFrame(() => {
+      const boot = bootFromUrl();
+      setRecents(boot.recents);
+      if (boot.location) {
+        setLocationState(boot.location);
+        setError(null);
+        syncUrl(boot.location, "replace");
+      } else if (boot.error) {
+        setError(boot.error);
+      }
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, []);
 
   useEffect(() => {
     function onPopState() {
