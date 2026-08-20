@@ -61,6 +61,17 @@ export function ForecastSkeleton({ days = 7 }: { days?: number }) {
   );
 }
 
+export function HourlyChartSkeleton() {
+  return (
+    <section aria-label="Loading hourly evolution">
+      <Pulse className="mb-3 h-3.5 w-32" />
+      <div className="rounded-card border border-border bg-surface px-3 py-3">
+        <Pulse className="h-40 w-full" />
+      </div>
+    </section>
+  );
+}
+
 export function HourlySkeleton() {
   return (
     <section aria-label="Loading hourly forecast">
@@ -111,12 +122,13 @@ export function WeatherLoading({ showAi = false, forecastDays = 7 }: WeatherLoad
       className="space-y-6 pt-2 sm:space-y-8"
     >
       <p className="sr-only">Loading weather</p>
-      <div className="grid min-w-0 grid-cols-1 items-start gap-4 md:grid-cols-12">
-        <div className="min-w-0 space-y-8 md:col-span-8">
+      <div className="grid min-w-0 grid-cols-1 items-start gap-4 lg:grid-cols-12">
+        <div className="min-w-0 space-y-8 lg:col-span-8">
           <CurrentWeatherSkeleton />
           <HourlySkeleton />
+          <HourlyChartSkeleton />
         </div>
-        <div className="min-w-0 space-y-8 border-t border-border pt-8 md:col-span-4 md:border-l md:border-t-0 md:pl-8 md:pt-0">
+        <div className="min-w-0 space-y-8 border-t border-border pt-8 lg:col-span-4 lg:border-l lg:border-t-0 lg:pl-8 lg:pt-0">
           {showAi ? <AiSummarySkeleton /> : null}
           <ForecastSkeleton days={forecastDays} />
         </div>

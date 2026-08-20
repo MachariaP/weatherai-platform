@@ -13,6 +13,7 @@ describe("WeatherLoading", () => {
     expect(screen.getByRole("status")).toBeDefined();
     expect(screen.getByRole("region", { name: "Loading current weather" })).toBeDefined();
     expect(screen.getByRole("region", { name: "Loading hourly forecast" })).toBeDefined();
+    expect(screen.getByRole("region", { name: "Loading hourly evolution" })).toBeDefined();
     expect(screen.getByRole("region", { name: "Loading 7-day forecast" })).toBeDefined();
     expect(screen.queryByRole("region", { name: "Loading AI insight" })).toBeNull();
   });
