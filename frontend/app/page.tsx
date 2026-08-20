@@ -1,5 +1,5 @@
-import { WeatherDashboard } from "@/components/weather/WeatherDashboard";
+import { LocationStatus } from "@/components/shell/LocationStatus";
 
 export default function Home() {
-  return <WeatherDashboard />;
+  return <LocationStatus />;
 }

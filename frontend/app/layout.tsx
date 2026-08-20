@@ -5,9 +5,8 @@ import { PreferencesProvider } from "@/components/providers/PreferencesProvider"
 import { Header } from "@/components/ui/Header";
 
 export const metadata: Metadata = {
-  title: "WeatherAI Dashboard",
-  description:
-    "Current conditions, a 7-day forecast, and an hourly outlook for any location on Earth.",
+  title: "WeatherAI",
+  description: "Look up weather by latitude and longitude.",
 };
 
 export default function RootLayout({
