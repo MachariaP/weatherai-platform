@@ -40,9 +40,9 @@ describe("CurrentWeather", () => {
     expect(screen.getByText("°C")).toBeDefined();
   });
 
-  it("renders temperature with the imperial unit", () => {
+  it("renders wind in imperial units", () => {
     renderHero({}, { units: "imperial" });
-    expect(screen.getByText("23")).toBeDefined();
+    expect(screen.getByText("5 mph")).toBeDefined();
     expect(screen.getByText("°F")).toBeDefined();
   });
 
@@ -77,9 +77,32 @@ describe("CurrentWeather", () => {
     expect(screen.queryByText(/Live|Cached/)).toBeNull();
   });
 
-  it("shows a dash when observed_at is null", () => {
+  it("shows Unavailable when observed_at is null", () => {
     renderHero({ observed_at: null });
-    expect(screen.getByText("—")).toBeDefined();
+    expect(screen.getByText("Unavailable")).toBeDefined();
+  });
+
+  it("does not invent feels-like, humidity, or precipitation metrics", () => {
+    renderHero();
+    expect(screen.queryByText(/feels/i)).toBeNull();
+    expect(screen.queryByText(/humidity/i)).toBeNull();
+    expect(screen.queryByText(/^precipitation$/i)).toBeNull();
+  });
+
+  it("falls back when description is missing", () => {
+    renderHero({ weather_description: "" });
+    expect(screen.getByText("Conditions unavailable")).toBeDefined();
+  });
+
+  it("falls back when temperature is not a number", () => {
+    renderHero({ temperature: Number.NaN });
+    expect(screen.getByText("Unavailable")).toBeDefined();
+    expect(screen.queryByText("°C")).toBeNull();
+  });
+
+  it("renders zero wind as a real value", () => {
+    renderHero({ wind_speed: 0 });
+    expect(screen.getByText("0 km/h")).toBeDefined();
   });
 
   it("labels daytime conditions", () => {

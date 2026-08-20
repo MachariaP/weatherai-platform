@@ -52,6 +52,24 @@ describe("useWeather", () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 
+  it("is loading as soon as lat/lon appear on an existing hook instance", () => {
+    const { result, rerender } = renderHook(
+      ({ lat, lon }: { lat: number | null; lon: number | null }) =>
+        useWeather(lat, lon),
+      { initialProps: { lat: null as number | null, lon: null as number | null } }
+    );
+
+    expect(result.current.status).toBe("idle");
+    expect(result.current.isLoading).toBe(false);
+
+    rerender({ lat: -1.29, lon: 36.82 });
+
+    expect(result.current.status).toBe("loading");
+    expect(result.current.isLoading).toBe(true);
+    expect(result.current.data).toBeNull();
+    expect(result.current.error).toBeNull();
+  });
+
   it("exposes a loading state while the request is in flight", async () => {
     let resolveFetch: ((value: unknown) => void) | undefined;
     const pending = new Promise((resolve) => {
