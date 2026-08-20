@@ -201,3 +201,11 @@ export function GaugeIcon({ className }: IconProps) {
     </svg>
   );
 }
+
+export function StarIcon({ className, filled = false }: IconProps & { filled?: boolean }) {
+  return (
+    <svg {...BASE} className={className} fill={filled ? "currentColor" : "none"}>
+      <path d="m12 3.5 2.4 4.9 5.4.8-3.9 3.8.9 5.4L12 15.8 7.2 18.4l.9-5.4-3.9-3.8 5.4-.8L12 3.5Z" />
+    </svg>
+  );
+}

@@ -5,6 +5,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -18,6 +19,14 @@ import {
   rememberRecentLocation,
   type StoredLocation,
 } from "@/lib/recent-locations";
+import {
+  FAVORITE_FULL_MESSAGE,
+  addFavoriteLocation,
+  isFavoriteLocation,
+  loadFavoriteLocations,
+  persistFavoriteLocations,
+  removeFavoriteLocation,
+} from "@/lib/favorite-locations";
 
 export interface Location {
   lat: number;
@@ -33,6 +42,11 @@ export interface LocationContextValue {
   error: string | null;
   recents: Location[];
   clearRecents: () => void;
+  favorites: Location[];
+  isFavorite: (loc: Location) => boolean;
+  addFavorite: (loc: Location) => boolean;
+  removeFavorite: (loc: Location) => void;
+  favoriteNotice: string | null;
 }
 
 const LocationContext = createContext<LocationContextValue | null>(null);
@@ -114,28 +128,35 @@ function syncUrl(loc: StoredLocation, mode: "push" | "replace"): void {
   else window.history.pushState(null, "", href);
 }
 
-function bootFromUrl(): { location: Location | null; error: string | null; recents: Location[] } {
+function bootFromUrl(): {
+  location: Location | null;
+  error: string | null;
+  recents: Location[];
+  favorites: Location[];
+} {
   const recents = loadRecentLocations();
-  if (typeof window === "undefined") {
-    return { location: null, error: null, recents };
-  }
+  const favorites = loadFavoriteLocations();
   const parsed = parseLocationSearch(window.location.search);
+  if (parsed.status === "absent") {
+    return { location: null, error: null, recents, favorites };
+  }
   if (parsed.status === "invalid") {
-    return { location: null, error: "Invalid coordinates in the link", recents };
+    return { location: null, error: "Invalid coordinates in the link", recents, favorites };
   }
   if (parsed.status !== "valid") {
-    return { location: null, error: null, recents };
+    return { location: null, error: null, recents, favorites };
   }
   const location: Location = {
     lat: parsed.lat,
     lon: parsed.lon,
     label:
       labelForCoords(parsed.lat, parsed.lon, recents) ||
+      labelForCoords(parsed.lat, parsed.lon, favorites) ||
       formatCoordinates(parsed.lat, parsed.lon),
   };
   const nextRecents = rememberRecentLocation(location, recents);
   persistRecentLocations(nextRecents);
-  return { location, error: null, recents: nextRecents };
+  return { location, error: null, recents: nextRecents, favorites };
 }
 
 /**
@@ -152,6 +173,9 @@ export function LocationProvider({ children }: { children: ReactNode }) {
   const [detecting, setDetecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [recents, setRecents] = useState<Location[]>([]);
+  const [favorites, setFavorites] = useState<Location[]>([]);
+  const [favoriteNotice, setFavoriteNotice] = useState<string | null>(null);
+  const favoritesRef = useRef<Location[]>([]);
 
   const applyLocation = useCallback((loc: Location, history: "push" | "replace" | "none") => {
     const next: Location = {
@@ -182,10 +206,40 @@ export function LocationProvider({ children }: { children: ReactNode }) {
     setRecents([]);
   }, []);
 
+  const isFavorite = useCallback(
+    (loc: Location) => isFavoriteLocation(loc, favorites),
+    [favorites]
+  );
+
+  const addFavorite = useCallback((loc: Location) => {
+    const result = addFavoriteLocation(loc, favoritesRef.current);
+    if (result.status === "full") {
+      setFavoriteNotice(FAVORITE_FULL_MESSAGE);
+      return false;
+    }
+    setFavoriteNotice(null);
+    if (result.status === "added") {
+      favoritesRef.current = result.items;
+      setFavorites(result.items);
+      persistFavoriteLocations(result.items);
+    }
+    return true;
+  }, []);
+
+  const removeFavorite = useCallback((loc: Location) => {
+    const next = removeFavoriteLocation(loc, favoritesRef.current);
+    favoritesRef.current = next;
+    persistFavoriteLocations(next);
+    setFavorites(next);
+    setFavoriteNotice(null);
+  }, []);
+
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => {
       const boot = bootFromUrl();
       setRecents(boot.recents);
+      setFavorites(boot.favorites);
+      favoritesRef.current = boot.favorites;
       if (boot.location) {
         setLocationState(boot.location);
         setError(null);
@@ -201,7 +255,7 @@ export function LocationProvider({ children }: { children: ReactNode }) {
     function onPopState() {
       const parsed = parseLocationSearch(window.location.search);
       if (parsed.status === "valid") {
-        const stored = loadRecentLocations();
+        const stored = [...loadRecentLocations(), ...loadFavoriteLocations()];
         applyLocation(
           {
             lat: parsed.lat,
@@ -273,6 +327,11 @@ export function LocationProvider({ children }: { children: ReactNode }) {
         error,
         recents,
         clearRecents,
+        favorites,
+        isFavorite,
+        addFavorite,
+        removeFavorite,
+        favoriteNotice,
       }}
     >
       {children}

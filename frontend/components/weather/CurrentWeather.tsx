@@ -29,6 +29,7 @@ interface Props {
   cacheStatus: string | null;
   lat?: number | null;
   lon?: number | null;
+  actions?: ReactNode;
 }
 
 interface DetailProps {
@@ -77,6 +78,7 @@ export function CurrentWeather({
   cacheStatus,
   lat = null,
   lon = null,
+  actions,
 }: Props) {
   const isDay = data.is_day === true;
   const iconName = getWeatherIconName(
@@ -102,9 +104,12 @@ export function CurrentWeather({
   return (
     <section aria-label="Current weather">
       <header className="mb-4">
-        <h1 className="text-2xl font-semibold tracking-tight text-text sm:text-[32px] sm:leading-10">
-          {location || "Unknown location"}
-        </h1>
+        <div className="flex items-start justify-between gap-3">
+          <h1 className="text-2xl font-semibold tracking-tight text-text sm:text-[32px] sm:leading-10">
+            {location || "Unknown location"}
+          </h1>
+          {actions}
+        </div>
         {precision ? (
           <p className="mt-1 flex items-center gap-1 font-medium tracking-wide text-text-muted">
             <MapPinIcon className="h-4 w-4 shrink-0" />

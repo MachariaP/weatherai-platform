@@ -3,8 +3,9 @@
 import { useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { useLocation } from "@/components/providers/LocationProvider";
 import { formatCoordinates, parseLatLonQuery } from "@/lib/format";
+import { coordKey } from "@/lib/stored-locations";
 import type { GeocodeHit } from "@/lib/types";
-import { MapPinIcon, SearchIcon } from "./icons";
+import { MapPinIcon, SearchIcon, StarIcon } from "./icons";
 
 const DEBOUNCE_MS = 300;
 
@@ -44,7 +45,7 @@ function parseHits(body: unknown): GeocodeHit[] | null {
 }
 
 export function SearchBar() {
-  const { setLocation, recents, clearRecents } = useLocation();
+  const { setLocation, recents, clearRecents, favorites, removeFavorite } = useLocation();
   const [query, setQuery] = useState("");
   const [latStr, setLatStr] = useState("");
   const [lonStr, setLonStr] = useState("");
@@ -63,9 +64,13 @@ export function SearchBar() {
 
   const trimmedQuery = query.trim();
   const coordQuery = parseLatLonQuery(trimmedQuery);
-  const showRecents = open && trimmedQuery.length < 2 && recents.length > 0 && !coordQuery;
+  const recentOnly = recents.filter(
+    (item) => !favorites.some((fav) => coordKey(fav.lat, fav.lon) === coordKey(item.lat, item.lon))
+  );
+  const browseItems = [...favorites, ...recentOnly];
+  const showBrowse = open && trimmedQuery.length < 2 && !coordQuery && browseItems.length > 0;
   const showResults = open && trimmedQuery.length >= 2 && !coordQuery;
-  const listOpen = showRecents || showResults;
+  const listOpen = showBrowse || showResults;
 
   // Depend on trimmedQuery only. parseLatLonQuery returns a new object each
   // render, so listing coordQuery would retrigger setState every paint.
@@ -203,7 +208,7 @@ export function SearchBar() {
   }
 
   function onQueryKeyDown(e: KeyboardEvent<HTMLInputElement>) {
-    const items = showRecents ? recents : results;
+    const items = showBrowse ? browseItems : results;
     if (e.key === "Escape") {
       e.preventDefault();
       setOpen(false);
@@ -279,41 +284,100 @@ export function SearchBar() {
             <div
               id={listId}
               role="listbox"
-              aria-label={showRecents ? "Recent locations" : "Location suggestions"}
+              aria-label={
+                showBrowse
+                  ? favorites.length > 0 && recentOnly.length > 0
+                    ? "Saved and recent locations"
+                    : favorites.length > 0
+                      ? "Saved places"
+                      : "Recent locations"
+                  : "Location suggestions"
+              }
               className="absolute z-30 mt-1 max-h-64 w-full overflow-auto rounded-control border border-border bg-surface py-1 shadow-lg"
             >
-              {showRecents ? (
+              {showBrowse ? (
                 <>
-                  <div className="flex items-center justify-between px-3 py-1.5">
-                    <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-text-muted">
-                      Recent
-                    </p>
-                    <button
-                      type="button"
-                      className="text-[11px] font-medium text-text-muted hover:text-accent"
-                      onClick={() => clearRecents()}
-                    >
-                      Clear
-                    </button>
-                  </div>
-                  {recents.map((item, index) => (
-                    <button
-                      key={`${item.lat},${item.lon}`}
-                      type="button"
-                      role="option"
-                      id={`${listId}-option-${index}`}
-                      aria-selected={index === activeIndex}
-                      className={`flex w-full px-3 py-3 text-left text-sm ${
-                        index === activeIndex
-                          ? "border-l-2 border-accent bg-accent/15 font-medium text-text"
-                          : "border-l-2 border-transparent text-text-secondary hover:bg-accent/10"
-                      }`}
-                      onMouseEnter={() => setActiveIndex(index)}
-                      onClick={() => applyHit(item)}
-                    >
-                      {item.label}
-                    </button>
-                  ))}
+                  {favorites.length > 0 ? (
+                    <>
+                      <p className="px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.08em] text-text-muted">
+                        Saved
+                      </p>
+                      {favorites.map((item, index) => (
+                        <div
+                          key={`fav-${item.lat},${item.lon}`}
+                          className={`flex items-stretch ${
+                            index === activeIndex ? "bg-accent/15" : ""
+                          }`}
+                        >
+                          <button
+                            type="button"
+                            role="option"
+                            id={`${listId}-option-${index}`}
+                            aria-selected={index === activeIndex}
+                            className={`flex min-h-10 min-w-0 flex-1 items-center gap-2 px-3 py-2 text-left text-sm ${
+                              index === activeIndex
+                                ? "border-l-2 border-accent font-medium text-text"
+                                : "border-l-2 border-transparent text-text-secondary hover:bg-accent/10"
+                            }`}
+                            onMouseEnter={() => setActiveIndex(index)}
+                            onClick={() => applyHit(item)}
+                          >
+                            <StarIcon className="h-3.5 w-3.5 shrink-0 text-accent" filled />
+                            {item.label}
+                          </button>
+                          <button
+                            type="button"
+                            className="focus-ring shrink-0 px-3 text-[11px] font-medium text-text-muted hover:text-accent"
+                            aria-label={`Remove ${item.label} from saved places`}
+                            onClick={(event) => {
+                              event.preventDefault();
+                              event.stopPropagation();
+                              removeFavorite(item);
+                            }}
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      ))}
+                    </>
+                  ) : null}
+                  {recentOnly.length > 0 ? (
+                    <>
+                      <div className="flex items-center justify-between px-3 py-1.5">
+                        <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-text-muted">
+                          Recent
+                        </p>
+                        <button
+                          type="button"
+                          className="text-[11px] font-medium text-text-muted hover:text-accent"
+                          onClick={() => clearRecents()}
+                        >
+                          Clear
+                        </button>
+                      </div>
+                      {recentOnly.map((item, offset) => {
+                        const index = favorites.length + offset;
+                        return (
+                          <button
+                            key={`recent-${item.lat},${item.lon}`}
+                            type="button"
+                            role="option"
+                            id={`${listId}-option-${index}`}
+                            aria-selected={index === activeIndex}
+                            className={`flex min-h-10 w-full px-3 py-2 text-left text-sm ${
+                              index === activeIndex
+                                ? "border-l-2 border-accent bg-accent/15 font-medium text-text"
+                                : "border-l-2 border-transparent text-text-secondary hover:bg-accent/10"
+                            }`}
+                            onMouseEnter={() => setActiveIndex(index)}
+                            onClick={() => applyHit(item)}
+                          >
+                            {item.label}
+                          </button>
+                        );
+                      })}
+                    </>
+                  ) : null}
                 </>
               ) : searching && results.length === 0 ? (
                 <p className="px-3 py-2 text-sm text-text-muted">Searching…</p>

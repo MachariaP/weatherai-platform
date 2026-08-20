@@ -14,19 +14,21 @@ import { AISummary } from "./AISummary";
 import { HourlyScroll } from "./HourlyScroll";
 import { ForecastGrid } from "./ForecastGrid";
 import { SettingsPanel } from "./SettingsPanel";
+import { FavoriteToggle } from "@/components/ui/FavoriteToggle";
 
 /**
  * Async weather states: empty, loading, success, error, and view switching.
  */
 export function CurrentConditionsView() {
   const { location } = useLocation();
-  const { units, aiEnabled } = usePreferences();
+  const { units, aiEnabled, forecastDays } = usePreferences();
   const { view } = useAppView();
   const { data, error, cacheStatus, refetch, isRefreshing } = useWeather(
     location?.lat ?? null,
     location?.lon ?? null,
     units,
-    aiEnabled
+    aiEnabled,
+    forecastDays
   );
 
   if (view === "settings") {
@@ -38,7 +40,7 @@ export function CurrentConditionsView() {
   }
 
   if (!data && !error) {
-    return <WeatherLoading showAi={aiEnabled} />;
+    return <WeatherLoading showAi={aiEnabled} forecastDays={forecastDays} />;
   }
 
   if (error && !data) {
@@ -81,6 +83,7 @@ export function CurrentConditionsView() {
       cacheStatus={cacheStatus}
       lat={data.lat}
       lon={data.lon}
+      actions={<FavoriteToggle />}
     />
   );
 
@@ -92,7 +95,7 @@ export function CurrentConditionsView() {
         {coordsLabel ? (
           <p className="text-sm text-text-muted">{coordsLabel}</p>
         ) : null}
-        <ForecastGrid days={data.daily} units={units} />
+        <ForecastGrid days={data.daily} units={units} requestedDays={forecastDays} />
       </div>
     );
   }
@@ -133,7 +136,7 @@ export function CurrentConditionsView() {
             summary={data.ai_summary}
             error={error}
           />
-          <ForecastGrid days={data.daily} units={units} />
+          <ForecastGrid days={data.daily} units={units} requestedDays={forecastDays} />
         </aside>
       </div>
     </div>
