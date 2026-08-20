@@ -249,3 +249,97 @@ def test_zero_values_are_preserved_not_treated_as_missing():
     assert result.daily[0].temp_max == 0.0
     assert result.daily[0].precipitation == 0.0
     assert result.hourly[0].temperature == 0.0
+    assert result.hourly[0].precipitation == 0.0
+
+
+def test_missing_daily_precipitation_is_null_not_zero():
+    result = normalize_weather(
+        _upstream(
+            daily=[{"date": "2026-08-19", "temp_max": 24.0, "temp_min": 15.0, "weathercode": 1}],
+        )
+    )
+    assert result.daily[0].precipitation is None
+
+
+def test_missing_hourly_precipitation_is_null_not_zero():
+    result = normalize_weather(
+        _upstream(
+            hourly=[{"time": "2026-08-19T00:00", "temp": 16.0, "weathercode": 1}],
+        )
+    )
+    assert result.hourly[0].precipitation is None
+
+
+def test_null_daily_precipitation_is_null():
+    result = normalize_weather(
+        _upstream(
+            daily=[
+                {
+                    "date": "2026-08-19",
+                    "temp_max": 24.0,
+                    "temp_min": 15.0,
+                    "precipitation": None,
+                    "weathercode": 1,
+                }
+            ],
+        )
+    )
+    assert result.daily[0].precipitation is None
+
+
+def test_null_hourly_precipitation_is_null():
+    result = normalize_weather(
+        _upstream(
+            hourly=[
+                {
+                    "time": "2026-08-19T00:00",
+                    "temp": 16.0,
+                    "precipitation": None,
+                    "weathercode": 1,
+                }
+            ],
+        )
+    )
+    assert result.hourly[0].precipitation is None
+
+
+def test_positive_daily_and_hourly_precipitation_preserved():
+    result = normalize_weather(
+        _upstream(
+            daily=[
+                {
+                    "date": "2026-08-19",
+                    "temp_max": 24.0,
+                    "temp_min": 15.0,
+                    "precipitation": 2.7,
+                    "weathercode": 61,
+                }
+            ],
+            hourly=[
+                {
+                    "time": "2026-08-19T00:00",
+                    "temp": 16.0,
+                    "precipitation": 2.7,
+                    "weathercode": 61,
+                }
+            ],
+        )
+    )
+    assert result.daily[0].precipitation == 2.7
+    assert result.hourly[0].precipitation == 2.7
+
+
+def test_precip_last_24h_does_not_treat_missing_hourly_as_zero():
+    result = normalize_weather(
+        _upstream(
+            current={"time": "2026-08-19T12:00", "temperature": 22.0, "weathercode": 0},
+            hourly=[
+                {"time": "2026-08-19T00:00", "temp": 16.0, "precipitation": 0.5, "weathercode": 0},
+                {"time": "2026-08-19T06:00", "temp": 16.0, "weathercode": 0},
+                {"time": "2026-08-19T12:00", "temp": 22.0, "precipitation": 0.0, "weathercode": 0},
+            ],
+        )
+    )
+    assert result.current.precip_last_24h == 0.5
+    assert result.hourly[1].precipitation is None
+    assert result.hourly[2].precipitation == 0.0

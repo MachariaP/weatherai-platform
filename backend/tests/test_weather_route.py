@@ -181,6 +181,93 @@ def test_different_params_are_not_cached_together(monkeypatch: pytest.MonkeyPatc
     assert route.call_count == 2
 
 
+@respx.mock
+def test_missing_precipitation_serializes_as_null_not_zero(monkeypatch: pytest.MonkeyPatch):
+    _patch_key(monkeypatch)
+    payload = {
+        **VALID_UPSTREAM,
+        "daily": [
+            {"date": "2026-08-19", "temp_max": 24.0, "temp_min": 15.0, "weathercode": 53}
+        ],
+        "hourly": [
+            {"time": "2026-08-19T00:00", "temp": 16.0, "weathercode": 51}
+        ],
+    }
+    respx.get(WEATHER_URL).mock(return_value=httpx.Response(200, json=payload))
+    resp = client.get("/weather", params={"lat": -1.29, "lon": 36.82})
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["daily"][0]["precipitation"] is None
+    assert body["hourly"][0]["precipitation"] is None
+    assert "precipitation" in body["daily"][0]
+    assert "precipitation" in body["hourly"][0]
+
+
+@respx.mock
+def test_zero_precipitation_serializes_as_zero(monkeypatch: pytest.MonkeyPatch):
+    _patch_key(monkeypatch)
+    payload = {
+        **VALID_UPSTREAM,
+        "daily": [
+            {
+                "date": "2026-08-19",
+                "temp_max": 24.0,
+                "temp_min": 15.0,
+                "precipitation": 0.0,
+                "weathercode": 1,
+            }
+        ],
+        "hourly": [
+            {
+                "time": "2026-08-19T00:00",
+                "temp": 16.0,
+                "precipitation": 0.0,
+                "weathercode": 1,
+            }
+        ],
+    }
+    respx.get(WEATHER_URL).mock(return_value=httpx.Response(200, json=payload))
+    resp = client.get("/weather", params={"lat": -1.29, "lon": 36.82})
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["daily"][0]["precipitation"] == 0.0
+    assert body["hourly"][0]["precipitation"] == 0.0
+
+
+@respx.mock
+def test_cache_hit_preserves_null_versus_zero_precipitation(monkeypatch: pytest.MonkeyPatch):
+    _patch_key(monkeypatch)
+    payload = {
+        **VALID_UPSTREAM,
+        "daily": [
+            {"date": "2026-08-19", "temp_max": 24.0, "temp_min": 15.0, "weathercode": 1}
+        ],
+        "hourly": [
+            {
+                "time": "2026-08-19T00:00",
+                "temp": 16.0,
+                "precipitation": 0.0,
+                "weathercode": 1,
+            }
+        ],
+    }
+    route = respx.get(WEATHER_URL).mock(return_value=httpx.Response(200, json=payload))
+    params = {"lat": -1.29, "lon": 36.82}
+
+    first = client.get("/weather", params=params)
+    assert first.status_code == 200
+    assert first.headers.get("x-cache") == "MISS"
+    assert first.json()["daily"][0]["precipitation"] is None
+    assert first.json()["hourly"][0]["precipitation"] == 0.0
+
+    second = client.get("/weather", params=params)
+    assert second.status_code == 200
+    assert second.headers.get("x-cache") == "HIT"
+    assert second.json()["daily"][0]["precipitation"] is None
+    assert second.json()["hourly"][0]["precipitation"] == 0.0
+    assert route.call_count == 1
+
+
 # ── Errors must NOT populate cache ─────────────────────────────────
 
 @respx.mock
