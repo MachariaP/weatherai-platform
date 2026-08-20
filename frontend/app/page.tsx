@@ -1,5 +1,5 @@
-import { LocationStatus } from "@/components/shell/LocationStatus";
+import { CurrentConditionsView } from "@/components/weather/CurrentConditionsView";
 
 export default function Home() {
-  return <LocationStatus />;
+  return <CurrentConditionsView />;
 }
