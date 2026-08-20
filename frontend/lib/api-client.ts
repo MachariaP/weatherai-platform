@@ -10,7 +10,14 @@
  * This client talks to OUR backend, not to WeatherAI directly.
  */
 
-import type { GeocodeResult, WeatherError, WeatherParams, WeatherResponse } from "./types";
+import type {
+  GeocodeHit,
+  GeocodeResult,
+  GeocodeSearchResponse,
+  WeatherError,
+  WeatherParams,
+  WeatherResponse,
+} from "./types";
 
 const BACKEND_TIMEOUT_MS = 8_000;
 const GEOCODE_TIMEOUT_MS = 15_000;
@@ -163,17 +170,40 @@ export type GeocodeFetchResult =
   | { ok: true; data: GeocodeResult }
   | { ok: false; status: number; error: WeatherError };
 
-function isGeocodeResult(value: unknown): value is GeocodeResult {
+export type GeocodeSearchFetchResult =
+  | { ok: true; data: GeocodeSearchResponse }
+  | { ok: false; status: number; error: WeatherError };
+
+function isGeocodeHit(value: unknown): value is GeocodeHit {
   if (value === null || typeof value !== "object") return false;
   const v = value as Record<string, unknown>;
-  return (
-    typeof v.lat === "number" &&
-    Number.isFinite(v.lat) &&
-    typeof v.lon === "number" &&
-    Number.isFinite(v.lon) &&
-    typeof v.label === "string" &&
-    v.label.trim().length > 0
-  );
+  if (
+    typeof v.lat !== "number" ||
+    !Number.isFinite(v.lat) ||
+    typeof v.lon !== "number" ||
+    !Number.isFinite(v.lon) ||
+    typeof v.label !== "string" ||
+    v.label.trim().length === 0
+  ) {
+    return false;
+  }
+  if (v.region !== undefined && (typeof v.region !== "string" || !v.region.trim())) {
+    return false;
+  }
+  if (v.country !== undefined && (typeof v.country !== "string" || !v.country.trim())) {
+    return false;
+  }
+  return true;
+}
+
+function isGeocodeResult(value: unknown): value is GeocodeResult {
+  return isGeocodeHit(value);
+}
+
+function isGeocodeSearchResponse(value: unknown): value is GeocodeSearchResponse {
+  if (value === null || typeof value !== "object") return false;
+  const results = (value as { results?: unknown }).results;
+  return Array.isArray(results) && results.every(isGeocodeHit);
 }
 
 async function fetchGeocodePath(
@@ -247,8 +277,68 @@ async function fetchGeocodePath(
   return { ok: true, data: body };
 }
 
-export function fetchGeocode(query: string): Promise<GeocodeFetchResult> {
-  return fetchGeocodePath("/geocode", { q: query });
+export async function fetchGeocode(query: string): Promise<GeocodeSearchFetchResult> {
+  const backendUrl = getBackendUrl();
+  if (!backendUrl) {
+    return {
+      ok: false,
+      status: 503,
+      error: { error: "backend_unavailable", message: "Backend is unreachable" },
+    };
+  }
+
+  const url = new URL("/geocode", backendUrl);
+  url.searchParams.set("q", query);
+
+  let res: Response;
+  try {
+    res = await fetch(url.toString(), {
+      cache: "no-store",
+      signal: AbortSignal.timeout(GEOCODE_TIMEOUT_MS),
+    });
+  } catch (err) {
+    if (isTimeoutError(err)) {
+      return {
+        ok: false,
+        status: 504,
+        error: { error: "backend_timeout", message: "Backend did not respond in time" },
+      };
+    }
+    return {
+      ok: false,
+      status: 503,
+      error: { error: "backend_unavailable", message: "Backend is unreachable" },
+    };
+  }
+
+  let body: unknown;
+  try {
+    body = await res.json();
+  } catch {
+    return {
+      ok: false,
+      status: res.ok ? 502 : res.status,
+      error: { error: "malformed_response", message: "Backend returned an unexpected response" },
+    };
+  }
+
+  if (!res.ok) {
+    return {
+      ok: false,
+      status: res.status,
+      error: parseErrorBody(res.status, body),
+    };
+  }
+
+  if (!isGeocodeSearchResponse(body)) {
+    return {
+      ok: false,
+      status: 502,
+      error: { error: "malformed_response", message: "Backend returned an unexpected response" },
+    };
+  }
+
+  return { ok: true, data: body };
 }
 
 export function fetchReverse(lat: number, lon: number): Promise<GeocodeFetchResult> {

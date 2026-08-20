@@ -54,6 +54,18 @@ export interface WeatherResponse {
   place_name?: string | null;
 }
 
+export interface GeocodeHit {
+  lat: number;
+  lon: number;
+  label: string;
+  region?: string;
+  country?: string;
+}
+
+export interface GeocodeSearchResponse {
+  results: GeocodeHit[];
+}
+
 export interface GeocodeResult {
   lat: number;
   lon: number;

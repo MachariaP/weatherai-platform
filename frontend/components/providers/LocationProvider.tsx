@@ -4,10 +4,20 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useState,
   type ReactNode,
 } from "react";
 import { formatCoordinates } from "@/lib/format";
+import { coordsMatchUrl, locationHref, parseLocationSearch } from "@/lib/location-url";
+import {
+  clearRecentLocations,
+  labelForCoords,
+  loadRecentLocations,
+  persistRecentLocations,
+  rememberRecentLocation,
+  type StoredLocation,
+} from "@/lib/recent-locations";
 
 export interface Location {
   lat: number;
@@ -21,6 +31,8 @@ export interface LocationContextValue {
   detectLocation: () => void;
   detecting: boolean;
   error: string | null;
+  recents: Location[];
+  clearRecents: () => void;
 }
 
 const LocationContext = createContext<LocationContextValue | null>(null);
@@ -93,22 +105,105 @@ async function locateByIp(): Promise<Location | null> {
   }
 }
 
+function syncUrl(loc: StoredLocation, mode: "push" | "replace"): void {
+  if (typeof window === "undefined") return;
+  const href = locationHref(loc.lat, loc.lon);
+  const current = `${window.location.pathname}${window.location.search}`;
+  if (current === href || coordsMatchUrl(loc.lat, loc.lon, window.location.search)) return;
+  if (mode === "replace") window.history.replaceState(null, "", href);
+  else window.history.pushState(null, "", href);
+}
+
+function bootFromUrl(): { location: Location | null; error: string | null; recents: Location[] } {
+  const recents = loadRecentLocations();
+  if (typeof window === "undefined") {
+    return { location: null, error: null, recents };
+  }
+  const parsed = parseLocationSearch(window.location.search);
+  if (parsed.status === "invalid") {
+    return { location: null, error: "Invalid coordinates in the link", recents };
+  }
+  if (parsed.status !== "valid") {
+    return { location: null, error: null, recents };
+  }
+  const location: Location = {
+    lat: parsed.lat,
+    lon: parsed.lon,
+    label:
+      labelForCoords(parsed.lat, parsed.lon, recents) ||
+      formatCoordinates(parsed.lat, parsed.lon),
+  };
+  const nextRecents = rememberRecentLocation(location, recents);
+  persistRecentLocations(nextRecents);
+  return { location, error: null, recents: nextRecents };
+}
+
 /**
  * Selected-location state for the dashboard.
  *
- * Holds coordinates only. Weather fetching belongs to useWeather via
- * GET /api/weather — this provider never calls WeatherAI.
+ * Coordinates are the weather identity. Labels, recents, and URL params are
+ * convenience. This provider never calls WeatherAI.
  */
 export function LocationProvider({ children }: { children: ReactNode }) {
-  const [location, setLocationState] = useState<Location | null>(null);
+  const [boot] = useState(bootFromUrl);
+  const [location, setLocationState] = useState<Location | null>(boot.location);
   const [detecting, setDetecting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(boot.error);
+  const [recents, setRecents] = useState<Location[]>(boot.recents);
 
-  const setLocation = useCallback((loc: Location) => {
-    setLocationState(loc);
+  const applyLocation = useCallback((loc: Location, history: "push" | "replace" | "none") => {
+    const next: Location = {
+      lat: Number(loc.lat.toFixed(4)),
+      lon: Number(loc.lon.toFixed(4)),
+      label: loc.label.trim() || formatCoordinates(loc.lat, loc.lon),
+    };
+    setLocationState(next);
     setError(null);
     setDetecting(false);
+    setRecents((prev) => {
+      const updated = rememberRecentLocation(next, prev);
+      persistRecentLocations(updated);
+      return updated;
+    });
+    if (history !== "none") syncUrl(next, history);
   }, []);
+
+  const setLocation = useCallback(
+    (loc: Location) => {
+      applyLocation(loc, "push");
+    },
+    [applyLocation]
+  );
+
+  const clearRecents = useCallback(() => {
+    clearRecentLocations();
+    setRecents([]);
+  }, []);
+
+  useEffect(() => {
+    if (boot.location) syncUrl(boot.location, "replace");
+  }, [boot.location]);
+
+  useEffect(() => {
+    function onPopState() {
+      const parsed = parseLocationSearch(window.location.search);
+      if (parsed.status === "valid") {
+        const stored = loadRecentLocations();
+        applyLocation(
+          {
+            lat: parsed.lat,
+            lon: parsed.lon,
+            label:
+              labelForCoords(parsed.lat, parsed.lon, stored) ||
+              formatCoordinates(parsed.lat, parsed.lon),
+          },
+          "none"
+        );
+      }
+    }
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, [applyLocation]);
 
   const detectLocation = useCallback(() => {
     void (async () => {
@@ -122,7 +217,7 @@ export function LocationProvider({ children }: { children: ReactNode }) {
             const pos = await requestPosition(options);
             const lat = Number(pos.coords.latitude.toFixed(4));
             const lon = Number(pos.coords.longitude.toFixed(4));
-            setLocation({ lat, lon, label: formatCoordinates(lat, lon) });
+            applyLocation({ lat, lon, label: formatCoordinates(lat, lon) }, "push");
             return;
           } catch (err) {
             const code = geoCode(err);
@@ -130,8 +225,6 @@ export function LocationProvider({ children }: { children: ReactNode }) {
               denied = true;
               break;
             }
-            // POSITION_UNAVAILABLE: no GPS/Wi-Fi provider (typical in desktop
-            // Chromium). A high-accuracy retry will not help — use IP next.
             if (code === 2) break;
           }
         }
@@ -144,7 +237,7 @@ export function LocationProvider({ children }: { children: ReactNode }) {
 
       const approximated = await locateByIp();
       if (approximated) {
-        setLocation(approximated);
+        applyLocation(approximated, "push");
         return;
       }
 
@@ -155,11 +248,19 @@ export function LocationProvider({ children }: { children: ReactNode }) {
       );
       setDetecting(false);
     })();
-  }, [setLocation]);
+  }, [applyLocation]);
 
   return (
     <LocationContext.Provider
-      value={{ location, setLocation, detectLocation, detecting, error }}
+      value={{
+        location,
+        setLocation,
+        detectLocation,
+        detecting,
+        error,
+        recents,
+        clearRecents,
+      }}
     >
       {children}
     </LocationContext.Provider>

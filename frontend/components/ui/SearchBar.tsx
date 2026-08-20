@@ -1,9 +1,12 @@
 "use client";
 
-import { useId, useState, type FormEvent } from "react";
+import { useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { useLocation } from "@/components/providers/LocationProvider";
 import { formatCoordinates, parseLatLonQuery } from "@/lib/format";
+import type { GeocodeHit } from "@/lib/types";
 import { MapPinIcon, SearchIcon } from "./icons";
+
+const DEBOUNCE_MS = 300;
 
 function parseCoordinate(value: string): number | null {
   const trimmed = value.trim();
@@ -21,81 +24,159 @@ function geocodeErrorMessage(status: number, code?: string): string {
   return "Location search is unavailable";
 }
 
+function parseHits(body: unknown): GeocodeHit[] | null {
+  if (body === null || typeof body !== "object") return null;
+  const results = (body as { results?: unknown }).results;
+  if (!Array.isArray(results)) return null;
+  const hits: GeocodeHit[] = [];
+  for (const item of results) {
+    if (item === null || typeof item !== "object") continue;
+    const hit = item as { lat?: unknown; lon?: unknown; label?: unknown; region?: unknown; country?: unknown };
+    if (typeof hit.lat !== "number" || typeof hit.lon !== "number") continue;
+    if (!Number.isFinite(hit.lat) || !Number.isFinite(hit.lon)) continue;
+    if (typeof hit.label !== "string" || !hit.label.trim()) continue;
+    const next: GeocodeHit = { lat: hit.lat, lon: hit.lon, label: hit.label.trim() };
+    if (typeof hit.region === "string" && hit.region.trim()) next.region = hit.region.trim();
+    if (typeof hit.country === "string" && hit.country.trim()) next.country = hit.country.trim();
+    hits.push(next);
+  }
+  return hits;
+}
+
 export function SearchBar() {
-  const { setLocation } = useLocation();
+  const { setLocation, recents, clearRecents } = useLocation();
   const [query, setQuery] = useState("");
   const [latStr, setLatStr] = useState("");
   const [lonStr, setLonStr] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [searching, setSearching] = useState(false);
+  const [results, setResults] = useState<GeocodeHit[]>([]);
+  const [open, setOpen] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [searched, setSearched] = useState(false);
   const errorId = useId();
+  const listId = useId();
+  const abortRef = useRef<AbortController | null>(null);
+  const requestIdRef = useRef(0);
+  const committedQueryRef = useRef<string | null>(null);
+  const rootRef = useRef<HTMLFormElement | null>(null);
+
+  const trimmedQuery = query.trim();
+  const coordQuery = parseLatLonQuery(trimmedQuery);
+  const showRecents = open && trimmedQuery.length < 2 && recents.length > 0 && !coordQuery;
+  const showResults = open && trimmedQuery.length >= 2 && !coordQuery;
+  const listOpen = showRecents || showResults;
+
+  useEffect(() => {
+    if (coordQuery || trimmedQuery.length < 2 || committedQueryRef.current === trimmedQuery) {
+      abortRef.current?.abort();
+      setResults([]);
+      setSearching(false);
+      setSearched(false);
+      return;
+    }
+
+    const handle = window.setTimeout(() => {
+      abortRef.current?.abort();
+      const controller = new AbortController();
+      abortRef.current = controller;
+      const requestId = ++requestIdRef.current;
+      setSearching(true);
+      setError(null);
+      void (async () => {
+        try {
+          const res = await fetch(`/api/geocode?q=${encodeURIComponent(trimmedQuery)}`, {
+            cache: "no-store",
+            signal: controller.signal,
+          });
+          let body: unknown = null;
+          try {
+            body = await res.json();
+          } catch {
+            body = null;
+          }
+          if (requestId !== requestIdRef.current) return;
+          if (!res.ok) {
+            const code =
+              body !== null && typeof body === "object" && "error" in body
+                ? String((body as { error: unknown }).error)
+                : undefined;
+            setResults([]);
+            setSearched(true);
+            setError(geocodeErrorMessage(res.status, code));
+            return;
+          }
+          const hits = parseHits(body);
+          if (hits === null) {
+            setResults([]);
+            setSearched(true);
+            setError("Location search is unavailable");
+            return;
+          }
+          setResults(hits);
+          setActiveIndex(0);
+          setSearched(true);
+          setOpen(true);
+          setError(null);
+        } catch (err) {
+          if (err instanceof DOMException && err.name === "AbortError") return;
+          if (requestId !== requestIdRef.current) return;
+          setResults([]);
+          setSearched(true);
+          setError("Location search is unavailable");
+        } finally {
+          if (requestId === requestIdRef.current) setSearching(false);
+        }
+      })();
+    }, DEBOUNCE_MS);
+
+    return () => window.clearTimeout(handle);
+  }, [trimmedQuery, coordQuery]);
+
+  useEffect(() => {
+    function onPointerDown(event: MouseEvent) {
+      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", onPointerDown);
+    return () => document.removeEventListener("mousedown", onPointerDown);
+  }, []);
+
+  function applyHit(hit: { lat: number; lon: number; label: string }) {
+    setError(null);
+    setOpen(false);
+    committedQueryRef.current = hit.label.trim();
+    setQuery(hit.label);
+    setLocation({
+      lat: Number(hit.lat.toFixed(4)),
+      lon: Number(hit.lon.toFixed(4)),
+      label: hit.label,
+    });
+  }
 
   function applyCoords(lat: number, lon: number, label?: string) {
-    setError(null);
-    setLocation({
+    applyHit({
       lat,
       lon,
       label: label?.trim() || formatCoordinates(lat, lon),
     });
   }
 
-  async function geocodePlace(raw: string): Promise<void> {
-    setSearching(true);
-    try {
-      const res = await fetch(`/api/geocode?q=${encodeURIComponent(raw)}`, {
-        cache: "no-store",
-      });
-      let body: unknown = null;
-      try {
-        body = await res.json();
-      } catch {
-        body = null;
-      }
-      if (!res.ok) {
-        const code =
-          body !== null && typeof body === "object" && "error" in body
-            ? String((body as { error: unknown }).error)
-            : undefined;
-        setError(geocodeErrorMessage(res.status, code));
-        return;
-      }
-      if (body === null || typeof body !== "object") {
-        setError("Location search is unavailable");
-        return;
-      }
-      const hit = body as { lat?: unknown; lon?: unknown; label?: unknown };
-      if (
-        typeof hit.lat !== "number" ||
-        typeof hit.lon !== "number" ||
-        !Number.isFinite(hit.lat) ||
-        !Number.isFinite(hit.lon)
-      ) {
-        setError("Location search is unavailable");
-        return;
-      }
-      applyCoords(
-        hit.lat,
-        hit.lon,
-        typeof hit.label === "string" ? hit.label : undefined
-      );
-    } catch {
-      setError("Location search is unavailable");
-    } finally {
-      setSearching(false);
-    }
-  }
-
-  async function handleSubmit(e: FormEvent) {
+  function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    const trimmedQuery = query.trim();
+    e.stopPropagation();
 
     if (trimmedQuery) {
-      const parsed = parseLatLonQuery(trimmedQuery);
-      if (parsed) {
-        applyCoords(parsed.lat, parsed.lon);
+      if (coordQuery) {
+        applyCoords(coordQuery.lat, coordQuery.lon);
         return;
       }
-      await geocodePlace(trimmedQuery);
+      if (results[activeIndex]) {
+        applyHit(results[activeIndex]);
+        return;
+      }
+      if (searched && results.length === 0 && !searching) {
+        return;
+      }
       return;
     }
 
@@ -118,8 +199,38 @@ export function SearchBar() {
     applyCoords(lat, lon);
   }
 
+  function onQueryKeyDown(e: KeyboardEvent<HTMLInputElement>) {
+    const items = showRecents ? recents : results;
+    if (e.key === "Escape") {
+      e.preventDefault();
+      setOpen(false);
+      return;
+    }
+    // Enter in a form input otherwise submits and jsdom navigates.
+    if (e.key === "Enter") {
+      e.preventDefault();
+      if (coordQuery) {
+        applyCoords(coordQuery.lat, coordQuery.lon);
+        return;
+      }
+      if (open && items[activeIndex]) applyHit(items[activeIndex]);
+      return;
+    }
+    if (!listOpen || items.length === 0) return;
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setOpen(true);
+      setActiveIndex((i) => (i + 1) % items.length);
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setOpen(true);
+      setActiveIndex((i) => (i - 1 + items.length) % items.length);
+    }
+  }
+
   return (
     <form
+      ref={rootRef}
       id="weather-search"
       onSubmit={handleSubmit}
       noValidate
@@ -128,8 +239,8 @@ export function SearchBar() {
     >
       <p className="sr-only">Search by place name or coordinates</p>
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-        <div className="relative hidden min-w-0 flex-1 md:block">
-          <span className="pointer-events-none absolute inset-y-0 left-0 grid w-10 place-items-center text-text-muted">
+        <div className="relative min-w-0 flex-1">
+          <span className="pointer-events-none absolute inset-y-0 left-0 z-10 grid w-10 place-items-center text-text-muted">
             <SearchIcon className="h-4 w-4" />
           </span>
           <label className="sr-only" htmlFor="weather-query">
@@ -138,17 +249,98 @@ export function SearchBar() {
           <input
             id="weather-query"
             type="text"
+            role="combobox"
+            aria-autocomplete="list"
+            aria-expanded={listOpen}
+            aria-controls={listId}
+            aria-activedescendant={
+              listOpen ? `${listId}-option-${activeIndex}` : undefined
+            }
             autoComplete="off"
             placeholder="Search location or coordinates..."
             value={query}
             onChange={(e) => {
+              committedQueryRef.current = null;
               setQuery(e.target.value);
+              setOpen(true);
+              setActiveIndex(0);
               if (error) setError(null);
             }}
+            onFocus={() => setOpen(true)}
+            onKeyDown={onQueryKeyDown}
             aria-invalid={error !== null}
             aria-describedby={error ? errorId : undefined}
             className="h-10 w-full rounded-control border border-border bg-surface py-2 pl-10 pr-3 text-sm text-text placeholder:text-text-muted transition-colors focus:border-accent focus:outline-none"
           />
+          {listOpen ? (
+            <div
+              id={listId}
+              role="listbox"
+              aria-label={showRecents ? "Recent locations" : "Location suggestions"}
+              className="absolute z-30 mt-1 max-h-64 w-full overflow-auto rounded-control border border-border bg-surface py-1 shadow-lg"
+            >
+              {showRecents ? (
+                <>
+                  <div className="flex items-center justify-between px-3 py-1.5">
+                    <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-text-muted">
+                      Recent
+                    </p>
+                    <button
+                      type="button"
+                      className="text-[11px] font-medium text-text-muted hover:text-accent"
+                      onClick={() => clearRecents()}
+                    >
+                      Clear
+                    </button>
+                  </div>
+                  {recents.map((item, index) => (
+                    <button
+                      key={`${item.lat},${item.lon}`}
+                      type="button"
+                      role="option"
+                      id={`${listId}-option-${index}`}
+                      aria-selected={index === activeIndex}
+                      className={`flex w-full px-3 py-3 text-left text-sm ${
+                        index === activeIndex
+                          ? "border-l-2 border-accent bg-accent/15 font-medium text-text"
+                          : "border-l-2 border-transparent text-text-secondary hover:bg-accent/10"
+                      }`}
+                      onMouseEnter={() => setActiveIndex(index)}
+                      onClick={() => applyHit(item)}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </>
+              ) : searching && results.length === 0 ? (
+                <p className="px-3 py-2 text-sm text-text-muted">Searching…</p>
+              ) : searched && results.length === 0 ? (
+                <p className="px-3 py-2 text-sm text-text-secondary">No locations found</p>
+              ) : (
+                results.map((item, index) => (
+                  <button
+                    key={`${item.lat},${item.lon},${item.label}`}
+                    type="button"
+                    role="option"
+                    id={`${listId}-option-${index}`}
+                    aria-selected={index === activeIndex}
+                    className={`flex w-full flex-col px-3 py-3 text-left ${
+                      index === activeIndex
+                        ? "border-l-2 border-accent bg-accent/15 font-medium text-text"
+                        : "border-l-2 border-transparent text-text-secondary hover:bg-accent/10"
+                    }`}
+                    onMouseEnter={() => setActiveIndex(index)}
+                    onClick={() => applyHit(item)}
+                  >
+                    <span className="text-sm">{item.label}</span>
+                    {item.region ? (
+                      <span className="text-xs text-text-muted">{item.region}</span>
+                    ) : null}
+                  </button>
+                ))
+              )}
+            </div>
+          ) : null}
         </div>
 
         <div className="grid min-w-0 flex-1 grid-cols-2 gap-2 md:hidden">
@@ -201,7 +393,7 @@ export function SearchBar() {
         </div>
         <button
           type="submit"
-          disabled={searching}
+          disabled={searching && !coordQuery && trimmedQuery.length >= 2 && results.length === 0}
           className="focus-ring inline-flex h-10 w-full shrink-0 items-center justify-center rounded-control bg-accent px-4 text-sm font-semibold text-on-accent transition-colors hover:bg-accent-strong active:translate-y-px disabled:opacity-60 sm:w-auto"
         >
           {searching ? "Searching…" : "Get Weather"}
