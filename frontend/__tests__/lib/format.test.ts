@@ -7,6 +7,7 @@ import {
   formatDayName,
   formatHour,
   formatTime,
+  formatObservedClock,
   formatDate,
   formatPrecip,
   formatPrecipAmount,
@@ -90,11 +91,23 @@ describe("formatTime / formatDate", () => {
   });
 });
 
+describe("formatObservedClock", () => {
+  it("prints clock digits from a timezone-naive ISO string", () => {
+    expect(formatObservedClock("2026-08-19T12:00")).toBe("12:00");
+    expect(formatObservedClock("2026-08-19T14:32:00")).toBe("14:32");
+  });
+
+  it("does not invent a time when observed_at is missing", () => {
+    expect(formatObservedClock(null)).toBeNull();
+    expect(formatObservedClock("not-a-date")).toBeNull();
+  });
+});
+
 describe("formatPrecip", () => {
-  it("renders millimeters for metric", () => {
+  it("renders millimeters for metric, including verified zero", () => {
     expect(formatPrecip(2)).toBe("2 mm");
     expect(formatPrecip(0.3)).toBe("0.3 mm");
-    expect(formatPrecip(0)).toBe("");
+    expect(formatPrecip(0)).toBe("0 mm");
   });
 
   it("renders inches for imperial without converting the value", () => {
@@ -104,6 +117,7 @@ describe("formatPrecip", () => {
 
   it("omits non-finite precipitation", () => {
     expect(formatPrecip(Number.NaN)).toBe("");
+    expect(formatPrecip(null)).toBe("");
   });
 });
 
@@ -113,8 +127,9 @@ describe("formatPrecipAmount", () => {
     expect(formatPrecipAmount(2.4, "imperial")).toBe("2 in");
   });
 
-  it("does not invent a value for non-finite precipitation", () => {
-    expect(formatPrecipAmount(Number.NaN)).toBe("Unavailable");
+  it("does not invent a value for missing precipitation", () => {
+    expect(formatPrecipAmount(Number.NaN)).toBeNull();
+    expect(formatPrecipAmount(null)).toBeNull();
   });
 });
 

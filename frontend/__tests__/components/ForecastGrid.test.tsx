@@ -44,7 +44,8 @@ describe("ForecastGrid", () => {
     const daily = screen.getByRole("region", { name: "7-day forecast" });
     expect(daily.textContent).toContain("25°");
     expect(daily.textContent).toContain("14°");
-    expect(screen.queryByText("2 mm")).toBeNull();
+    expect(screen.getByText("2 mm")).toBeDefined();
+    expect(screen.queryByText("%")).toBeNull();
   });
 
   it("shows a fallback when daily data is missing", () => {
@@ -58,11 +59,24 @@ describe("ForecastGrid", () => {
     expect(screen.queryByRole("list", { name: "Daily forecast days" })).toBeNull();
   });
 
-  it("shows high and low only, without precipitation on the row", () => {
+  it("shows precipitation amounts, including verified zero, never as a percent", () => {
     render(<ForecastGrid days={DAYS} units="imperial" />);
-    expect(screen.queryByText("2 in")).toBeNull();
-    expect(screen.queryByText("0.3 in")).toBeNull();
+    expect(screen.getByText("0 in")).toBeDefined();
+    expect(screen.getByText("2 in")).toBeDefined();
+    expect(screen.getByText("0.3 in")).toBeDefined();
+    expect(screen.queryByText(/%|chance/i)).toBeNull();
+  });
+
+  it("hides daily precipitation when FastAPI sent null", () => {
+    render(
+      <ForecastGrid
+        days={[{ ...DAYS[1], precipitation: null }]}
+        units="metric"
+      />
+    );
+    expect(screen.getByText("Slight rain")).toBeDefined();
     expect(screen.queryByText(/mm/)).toBeNull();
+    expect(screen.queryByText("0 mm")).toBeNull();
   });
 
   it("caps long arrays at seven days", () => {

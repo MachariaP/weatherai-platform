@@ -40,7 +40,10 @@ describe("HourlyScroll", () => {
     expect(screen.getByText("Slight rain")).toBeDefined();
     expect(screen.getByText("18°")).toBeDefined();
     expect(screen.getByText("20°")).toBeDefined();
-    expect(screen.queryByText("1 mm")).toBeNull();
+    expect(screen.getByText("0 mm")).toBeDefined();
+    expect(screen.getByText("1 mm")).toBeDefined();
+    expect(screen.getByText("0.4 mm")).toBeDefined();
+    expect(screen.queryByText(/%|chance/i)).toBeNull();
   });
 
   it("shows a fallback when hourly data is missing", () => {
@@ -54,11 +57,24 @@ describe("HourlyScroll", () => {
     expect(screen.queryByRole("list", { name: "Hourly forecast times" })).toBeNull();
   });
 
-  it("does not show precipitation on hourly cards", () => {
+  it("shows hourly precipitation amounts in the contract units, never as a percent", () => {
     render(<HourlyScroll hours={HOURS} units="imperial" />);
-    expect(screen.queryByText("1 in")).toBeNull();
-    expect(screen.queryByText("0.4 in")).toBeNull();
+    expect(screen.getByText("0 in")).toBeDefined();
+    expect(screen.getByText("1 in")).toBeDefined();
+    expect(screen.getByText("0.4 in")).toBeDefined();
+    expect(screen.queryByText(/%|chance of rain/i)).toBeNull();
+  });
+
+  it("hides hourly precipitation when FastAPI sent null", () => {
+    render(
+      <HourlyScroll
+        hours={[{ ...HOURS[1], precipitation: null }]}
+        units="metric"
+      />
+    );
+    expect(screen.getByText("Slight rain")).toBeDefined();
     expect(screen.queryByText(/mm/)).toBeNull();
+    expect(screen.queryByText("0 mm")).toBeNull();
   });
 
   it("renders long hourly arrays without dropping items", () => {

@@ -2,7 +2,7 @@
  * @vitest-environment jsdom
  */
 import { describe, it, expect, afterEach, vi, beforeEach } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, act } from "@testing-library/react";
 import type { ReactNode } from "react";
 import type { WeatherResponse } from "@/lib/types";
 import { CurrentConditionsView } from "@/components/weather/CurrentConditionsView";
@@ -30,12 +30,12 @@ const MOCK_WEATHER: WeatherResponse = {
   ai_summary: null,
 };
 
-function jsonResponse(body: unknown, init?: { ok?: boolean; status?: number }) {
+function jsonResponse(body: unknown, init?: { ok?: boolean; status?: number; headers?: Headers }) {
   return {
     ok: init?.ok ?? true,
     status: init?.status ?? 200,
     json: () => Promise.resolve(body),
-    headers: new Headers({ "x-cache": "MISS" }),
+    headers: init?.headers ?? new Headers({ "x-cache": "MISS" }),
   };
 }
 
@@ -219,6 +219,8 @@ describe("CurrentConditionsView", () => {
     expect(screen.getByRole("region", { name: "7-day forecast" })).toBeDefined();
     expect(screen.getByText("23°")).toBeDefined();
     expect(screen.getByText("26°")).toBeDefined();
+    expect(screen.getByText("1 mm")).toBeDefined();
+    expect(screen.getByText("0 mm")).toBeDefined();
     expect(screen.queryByText("Hourly forecast is not available.")).toBeNull();
     expect(screen.queryByText("Daily forecast is not available.")).toBeNull();
   });
@@ -390,5 +392,86 @@ describe("CurrentConditionsView", () => {
     expect(fetchMock.mock.calls.some((call) => String(call[0]).startsWith("/api/weather"))).toBe(
       true
     );
+  });
+
+  it("shows observed time from observed_at and a Refresh control", async () => {
+    render(<CurrentConditionsView />, { wrapper });
+    searchNairobi();
+    await waitFor(() => expect(screen.getByText("Observed 10:45")).toBeDefined());
+    expect(screen.getByRole("button", { name: "Refresh" })).toBeDefined();
+  });
+
+  it("omits observed time when observed_at is missing", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        jsonResponse({
+          ...MOCK_WEATHER,
+          current: { ...MOCK_WEATHER.current, observed_at: null },
+        })
+      )
+    );
+    render(<CurrentConditionsView />, { wrapper });
+    searchNairobi();
+    await waitFor(() => expect(screen.getByRole("button", { name: "Refresh" })).toBeDefined());
+    expect(screen.queryByText(/Observed /)).toBeNull();
+  });
+
+  it("keeps current weather visible while a manual refresh is in flight", async () => {
+    let resolveRefresh: ((value: unknown) => void) | undefined;
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(MOCK_WEATHER))
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveRefresh = resolve;
+          })
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<CurrentConditionsView />, { wrapper });
+    searchNairobi();
+    await waitFor(() => expect(screen.getByText("Overcast")).toBeDefined());
+
+    fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Refreshing" })).toBeDefined());
+    expect(screen.getByText("Overcast")).toBeDefined();
+    expect(screen.getByRole("region", { name: "Current weather" })).toBeDefined();
+    expect(screen.queryByRole("region", { name: "Loading current weather" })).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Refreshing" }));
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+
+    await waitFor(() => expect(resolveRefresh).toBeDefined());
+    await act(async () => {
+      resolveRefresh?.(
+        jsonResponse(MOCK_WEATHER, { headers: new Headers({ "x-cache": "HIT" }) })
+      );
+    });
+    await waitFor(() => expect(screen.getByText("Cached")).toBeDefined());
+    expect(screen.getByText("Overcast")).toBeDefined();
+  });
+
+  it("keeps weather visible when a manual refresh fails", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(MOCK_WEATHER))
+      .mockResolvedValueOnce(
+        jsonResponse(
+          { error: "upstream_error", message: "Weather service temporarily unavailable" },
+          { ok: false, status: 502 }
+        )
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<CurrentConditionsView />, { wrapper });
+    searchNairobi();
+    await waitFor(() => expect(screen.getByText("Overcast")).toBeDefined());
+    fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
+
+    await waitFor(() => expect(screen.getByRole("alert")).toBeDefined());
+    expect(screen.getByText("Overcast")).toBeDefined();
+    expect(screen.getByRole("region", { name: "Current weather" })).toBeDefined();
   });
 });

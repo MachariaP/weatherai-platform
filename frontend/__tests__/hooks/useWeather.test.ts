@@ -199,6 +199,37 @@ describe("useWeather", () => {
     expect(String(mockFetch.mock.calls[1][0])).toContain("units=imperial");
   });
 
+  it("clears previous weather when units change so values are not mixed", async () => {
+    const metric: WeatherResponse = { ...MOCK_WEATHER, units: "metric" };
+    const imperial: WeatherResponse = { ...MOCK_WEATHER, units: "imperial" };
+    let resolveSecond: ((value: unknown) => void) | undefined;
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValueOnce(okResponse(metric))
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveSecond = resolve;
+          })
+      );
+    vi.stubGlobal("fetch", mockFetch);
+
+    const { result, rerender } = renderHook(
+      ({ units }: { units: "metric" | "imperial" }) => useWeather(-1.29, 36.82, units),
+      { initialProps: { units: "metric" as "metric" | "imperial" } }
+    );
+
+    await waitFor(() => expect(result.current.data?.units).toBe("metric"));
+    rerender({ units: "imperial" });
+    await waitFor(() => expect(result.current.data).toBeNull());
+    expect(result.current.isLoading).toBe(true);
+
+    await act(async () => {
+      resolveSecond?.(okResponse(imperial));
+    });
+    await waitFor(() => expect(result.current.data?.units).toBe("imperial"));
+  });
+
   it("refetches when the AI preference is enabled", async () => {
     const mockFetch = vi.fn().mockResolvedValue(okResponse());
     vi.stubGlobal("fetch", mockFetch);
@@ -283,6 +314,100 @@ describe("useWeather", () => {
       resolveSecond?.(okResponse(london));
     });
     await waitFor(() => expect(result.current.data?.lat).toBe(51.5));
+  });
+
+  it("keeps current weather visible during a manual refresh", async () => {
+    let resolveRefresh: ((value: unknown) => void) | undefined;
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValueOnce(okResponse(MOCK_WEATHER, "MISS"))
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveRefresh = resolve;
+          })
+      );
+    vi.stubGlobal("fetch", mockFetch);
+
+    const { result } = renderHook(() => useWeather(-1.29, 36.82));
+    await waitFor(() => expect(result.current.status).toBe("success"));
+    expect(result.current.data?.current.temperature).toBe(22.5);
+
+    await act(async () => {
+      result.current.refetch();
+    });
+
+    await waitFor(() => expect(result.current.isRefreshing).toBe(true));
+    expect(result.current.data?.current.temperature).toBe(22.5);
+    expect(result.current.isLoading).toBe(false);
+
+    await act(async () => {
+      resolveRefresh?.(okResponse(MOCK_WEATHER, "HIT"));
+    });
+    await waitFor(() => expect(result.current.isRefreshing).toBe(false));
+    expect(result.current.cacheStatus).toBe("HIT");
+    expect(result.current.data?.current.temperature).toBe(22.5);
+  });
+
+  it("does not start a second request when refetch is called while in flight", async () => {
+    const mockFetch = vi.fn().mockReturnValue(new Promise(() => {}));
+    vi.stubGlobal("fetch", mockFetch);
+
+    const { result } = renderHook(() => useWeather(-1.29, 36.82));
+    await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(1));
+
+    await act(async () => {
+      result.current.refetch();
+      result.current.refetch();
+    });
+
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps previous weather when a manual refresh fails", async () => {
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValueOnce(okResponse())
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 502,
+        json: () =>
+          Promise.resolve({
+            error: "upstream_error",
+            message: "Weather service temporarily unavailable",
+          }),
+        headers: new Headers(),
+      });
+    vi.stubGlobal("fetch", mockFetch);
+
+    const { result } = renderHook(() => useWeather(-1.29, 36.82));
+    await waitFor(() => expect(result.current.status).toBe("success"));
+
+    await act(async () => {
+      result.current.refetch();
+    });
+
+    await waitFor(() => expect(result.current.error?.error).toBe("upstream_error"));
+    expect(result.current.data?.current.temperature).toBe(22.5);
+    expect(result.current.status).toBe("success");
+  });
+
+  it("still forwards units and AI on refresh", async () => {
+    const mockFetch = vi.fn().mockResolvedValue(okResponse());
+    vi.stubGlobal("fetch", mockFetch);
+
+    const { result } = renderHook(() => useWeather(-1.29, 36.82, "imperial", true));
+    await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(1));
+    expect(String(mockFetch.mock.calls[0][0])).toContain("units=imperial");
+    expect(String(mockFetch.mock.calls[0][0])).toContain("ai=true");
+
+    await act(async () => {
+      result.current.refetch();
+    });
+    await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(2));
+    expect(String(mockFetch.mock.calls[1][0])).toContain("units=imperial");
+    expect(String(mockFetch.mock.calls[1][0])).toContain("ai=true");
+    expect(String(mockFetch.mock.calls[1][0])).not.toMatch(/refresh=|force=|no_cache=/);
   });
 
   it("treats a success body that is not JSON as a malformed response", async () => {
