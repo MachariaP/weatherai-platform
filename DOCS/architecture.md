@@ -2,18 +2,28 @@
 
 ## Overview
 
-Two-service architecture: a **FastAPI backend** (Python) handles all upstream API interaction, and a **Next.js frontend** (TypeScript) serves as a thin proxy and UI layer.
+Two-service architecture: a **FastAPI backend** (Python) handles all upstream
+API interaction, and a **Next.js frontend** (TypeScript) serves as a thin proxy
+and UI layer.
 
 ```
-┌──────────┐     ┌─────────────────┐     ┌──────────────────┐     ┌──────────────┐
-│  Browser  │────▶│  Next.js        │────▶│  FastAPI          │────▶│  WeatherAI   │
-│           │◀────│  /api/weather   │◀────│  /weather         │◀────│  API         │
-└──────────┘     └─────────────────┘     └──────────────────┘     └──────────────┘
-                  Server-side only        Owns: auth, retry,       External service
-                  Validates params        cache, normalization     (untrusted docs)
-                  Forwards X-Cache
-                  cache: "no-store"
+Browser
+  ↓ same-origin, cache: no-store
+Next.js /api/weather | /api/geocode | /api/reverse | /api/geolocate
+  ↓ BACKEND_URL (server-side only)
+FastAPI
+  ├── GET /weather     → WeatherAI (lat/lon only)
+  ├── GET /geocode     → Photon search
+  ├── GET /reverse     → Photon reverse
+  └── GET /geolocate   → IP approximation (ipwho.is)
 ```
+
+The WeatherAI key, base URL, retries, and weather cache stay on FastAPI.
+Place search, reverse geocoding, and IP approximation are also FastAPI-owned.
+The browser never talks to WeatherAI, Photon, or the IP-lookup provider.
+
+**Location identity is coordinates.** Place names and IP lookups are input
+conveniences that resolve to `lat` / `lon` before weather is fetched.
 
 ## Frozen Contract
 
@@ -31,9 +41,11 @@ subject to change without an explicit architecture decision.
 | Upstream error mapping | FastAPI only |
 | Response validation (upstream models) | FastAPI only |
 | Response normalization | FastAPI only |
-| TTL caching | FastAPI only |
+| TTL caching (weather and geocode) | FastAPI only |
 | Cache key generation | FastAPI only |
-| Browser-facing API boundary | Next.js `/api/weather` only |
+| Photon search / reverse | FastAPI only |
+| IP geolocation | FastAPI only |
+| Browser-facing API boundary | Next.js `/api/weather`, `/api/geocode`, `/api/reverse`, `/api/geolocate` |
 | TypeScript representation of the public contract | Next.js (`lib/types.ts`) |
 | Parameter validation at the browser boundary | Next.js route handler |
 | Translation of backend/network failures | Next.js |
@@ -42,39 +54,50 @@ subject to change without an explicit architecture decision.
 **The browser must never:**
 
 - call WeatherAI directly
+- call Photon (or any geocoder) directly
+- call the IP-lookup provider directly
 - know the WeatherAI API key
 - receive `NEXT_PUBLIC_*` WeatherAI credentials
 - contain a second WeatherAI client
-- contain a second cache
+- contain a second weather cache
 
 ## Service Responsibilities
 
 ### FastAPI Backend
 
-- **API key auth** — holds the WeatherAI API key; never exposed to the browser
-- **Retries** — exponential backoff for 5xx responses from upstream
-- **Error handling** — maps upstream failures to structured error responses
-- **Normalization** — two-layer data models transform raw upstream data into a stable public contract
-- **In-memory TTL cache** — single cache layer to avoid redundant upstream calls
+- **WeatherAI client** — Bearer auth, timeout, query params (`lat`, `lon`, `days`, `units`, `ai`, `lang`)
+- **Retries** — exponential backoff for upstream 5xx only
+- **Error handling** — maps upstream failures to structured responses (never 401 to the browser)
+- **Normalization** — `Upstream*` models → public `Weather*` contract
+- **In-memory TTL cache** — weather keyed on lat/lon/days/units/ai/lang; geocode keyed on query
+- **Photon geocoding** — place search and reverse; errors never include Photon URLs
+- **IP geolocation** — approximates lat/lon from the public client IP (or egress IP when the caller is loopback); used when browser GPS is unavailable. Never returns the IP in the JSON body
+- **API key** — `WEATHERAI_API_KEY` only; never exposed to Next.js or the browser
 
 ### Next.js Frontend
 
-- **Thin proxy** — validates query params (`lat`, `lon`, `days`, `units`, etc.), delegates to FastAPI
-- **Forwards `X-Cache` header** — passes cache HIT/MISS from FastAPI to the browser
-- **`cache: "no-store"`** — prevents Next.js from double-caching responses that FastAPI already caches
-- **UI rendering** — React components consume the normalized `WeatherResponse` contract
+- **Thin proxies** — validate query params, delegate to FastAPI, `cache: "no-store"`
+- **Forwards `X-Cache`** — HIT/MISS from FastAPI on `/api/weather`
+- **Forwards `X-Forwarded-For`** — on `/api/geolocate` only, so FastAPI can look up a public client IP
+- **UI** — React consumes the public `WeatherResponse` / geocode contracts
 
 ## Security Boundary
 
-- The browser **never** talks to WeatherAI directly
+- The browser **never** talks to WeatherAI, Photon, or the IP-lookup host
 - The browser **never** receives the API key
 - `BACKEND_URL` is a server-side env var only (no `NEXT_PUBLIC_` prefix)
+- Shareable location URLs, when present, are coordinates only (`?lat=&lon=`)
 
 ## Data Model Layers
 
 | Layer | Purpose | Example |
 |---|---|---|
 | `Upstream*` models | Match the real WeatherAI response shape | `UpstreamWeatherResponse`, `UpstreamCurrent` |
-| `Weather*` models | Public contract served to the frontend | `WeatherResponse`, `CurrentWeather` |
+| `Weather*` models | Public weather contract served to the frontend | `WeatherResponse`, `CurrentWeather` |
+| Geocode public shape | Place candidates / reverse / IP approximate | `{ lat, lon, label }` (and later a `results` list) |
 
-The normalization layer (`normalize()`) converts between them. When the upstream API shape changes (as documented in `challenges.md`), only the `Upstream*` models need updating — everything downstream stays stable.
+The weather normalization layer (`normalize()`) converts upstream weather into
+the public contract. Geocode responses are normalized in `app/geocode.py` from
+Photon / ipwho.is into the same `{ lat, lon, label }` application shape.
+When an upstream shape changes, only the FastAPI adapter for that provider
+changes — the browser still never sees provider JSON.

@@ -8,16 +8,19 @@ focus on testing, error handling, and reliability.
 
 ```
 Browser
-  │  same-origin request
-  ▼
-Next.js /api/weather  (Route Handler — validates params, thin proxy)
-  │  server-to-server, cache: "no-store"
-  ▼
-FastAPI /weather  (owns: auth, retries, normalization, TTL cache)
-  │  Bearer token, exponential backoff
-  ▼
-WeatherAI API  (api.weather-ai.co)
+  │  same-origin
+  ├─ GET /api/weather?lat&lon  ──▶ FastAPI /weather   ──▶ WeatherAI (coordinates only)
+  ├─ GET /api/geocode?q        ──▶ FastAPI /geocode   ──▶ Photon search
+  ├─ GET /api/reverse?lat&lon  ──▶ FastAPI /reverse   ──▶ Photon reverse
+  └─ GET /api/geolocate        ──▶ FastAPI /geolocate ──▶ IP approximation
 ```
+
+The browser never talks to WeatherAI, Photon, or the IP-lookup provider. City
+names and GPS/IP fallbacks resolve to latitude and longitude on FastAPI, then
+weather is fetched with those coordinates. Optional current fields
+(`feels_like`, `humidity`, `uv_index`, `pressure`, `precip_last_24h`) and
+`place_name` appear only when FastAPI can populate them; the UI hides missing
+metric tiles instead of inventing values.
 
 The frontend has no knowledge of WeatherAI, its auth scheme, or its error
 codes. The backend treats WeatherAI as an untrusted, potentially slow,
@@ -51,17 +54,17 @@ cp .env.local.example .env.local
 npm run dev
 ```
 
-Visit `http://localhost:3000` — enter coordinates or click "My Location".
+Visit `http://localhost:3000` — search a place name, enter coordinates, or click "My Location".
 
 ### Running Tests
 
 ```bash
-# Backend (81 tests, ~99% coverage of app/)
+# Backend
 cd backend && source .venv/bin/activate
 ruff check app/ tests/
 pytest --cov=app --cov-report=term-missing
 
-# Frontend (191 tests)
+# Frontend
 cd frontend
 npm test
 npm run typecheck
@@ -75,21 +78,23 @@ frontend lint, `tsc --noEmit`, and vitest on every push and pull request.
 ## Features
 
 - Current weather with temperature, wind, and conditions
-- 7-day forecast grid
-- Hourly forecast scroll
-- Metric/Imperial unit toggle (persisted to localStorage)
-- Browser geolocation detection
+- 7-day forecast and hourly outlook
+- Place-name search (first Photon match) and coordinate search
+- Browser geolocation with IP approximation when GPS is unavailable
+- Metric/imperial and AI insight preferences (Settings, `localStorage`)
 - Cache HIT/MISS indicator
-- AI summary display (when available)
-- Loading skeletons and error states with retry
-- Typed error propagation (400, 401, 429, 502, 503, 504)
+- AI summary display when the upstream provides one (`ai_summary` may be null)
+- Loading skeletons, empty state, and classified errors with retry
 
 ## API Endpoints
 
 | Endpoint | Description |
 |---|---|
 | `GET /api/weather?lat=&lon=` | Weather data (browser-facing) |
-| `GET /health` | Backend health check |
+| `GET /api/geocode?q=` | Place search → `{ lat, lon, label }` |
+| `GET /api/reverse?lat=&lon=` | Reverse geocode → `{ lat, lon, label }` |
+| `GET /api/geolocate` | IP approximation → `{ lat, lon, label }` |
+| `GET /health` | Backend liveness (FastAPI, not browser-facing in prod) |
 
 Query parameters: `lat` (required), `lon` (required), `days` (1-7),
 `units` (metric\|imperial), `ai` (true\|false), `lang` (string).
@@ -100,7 +105,9 @@ Query parameters: `lat` (required), `lon` (required), `days` (1-7),
 - **Single cache layer**: FastAPI owns caching; Next.js uses `cache: "no-store"` to avoid double-caching.
 - **Two-layer data models**: Upstream models (raw API) vs public contract (application shape) — decoupled so upstream changes don't silently propagate.
 - **Typed error handling**: Each upstream error (401, 429, 500, 503, timeout) maps to a specific typed exception with distinct HTTP response.
-- **No geocoding service**: WeatherAI doesn't offer Free-plan city search. UI uses coordinate input + browser geolocation.
+- **City search via Photon**: WeatherAI Free is coordinates-only. FastAPI geocodes place names with OpenStreetMap Photon, then calls `/v1/weather` with lat/lon. The browser never talks to Photon or WeatherAI.
+- **IP geolocation**: used only after GPS fails without a permission denial. FastAPI calls the lookup provider; the browser never sees that URL or the IP.
+- **Hide missing metrics**: humidity, UV, pressure, feels-like, and 24h precip tiles render only when FastAPI sent a value.
 
 ## Documentation
 
@@ -109,7 +116,8 @@ See `DOCS/` for detailed architecture, API reference, build plan, interview prep
 ## Known Limitations
 
 - TypeScript types are manually synced with backend Pydantic models
-- No city name search (WeatherAI Free plan limitation)
+- WeatherAI Free has no city-name weather endpoint; place search is Photon via FastAPI
+- Optional current extras are omitted from the UI when upstream does not send them
 - In-memory cache resets on backend restart
 - AI summaries consume a separate, smaller quota (200/mo vs 1000/mo)
 - AI summary availability depends on the upstream plan: on the currently tested

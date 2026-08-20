@@ -2,9 +2,10 @@
 
 ## Browser-Facing
 
-### GET `/api/weather`
+These routes are Next.js Route Handlers. They validate params, proxy to FastAPI,
+and never call WeatherAI, Photon, or the IP-lookup provider.
 
-Next.js route handler. Validates params, proxies to FastAPI, forwards the response.
+### GET `/api/weather`
 
 **Query Parameters:**
 
@@ -15,61 +16,77 @@ Next.js route handler. Validates params, proxies to FastAPI, forwards the respon
 | `days` | No | number | 7 | 1–7 |
 | `units` | No | string | `metric` | `metric` or `imperial` |
 | `ai` | No | string | `false` | `true` or `false` |
-| `lang` | No | string | — | Language code |
+| `lang` | No | string | `en` (FastAPI) | Language code passed through to WeatherAI |
 
-**Success Response (200):**
+**Success Response (200)** — public `WeatherResponse` (not the WeatherAI raw shape):
 
 ```json
 {
+  "lat": -1.2864,
+  "lon": 36.8172,
+  "units": "metric",
+  "place_name": "Nairobi, Kenya",
   "current": {
     "temperature": 22.5,
+    "wind_speed": 5.0,
+    "wind_direction": 180,
+    "weather_code": 1,
+    "weather_description": "Mainly clear",
+    "is_day": true,
+    "observed_at": "2026-08-19T12:00",
     "feels_like": 21.0,
     "humidity": 65,
-    "wind_speed": 12.3,
-    "wind_direction": "NW",
-    "condition": "Partly cloudy",
-    "icon": "partly-cloudy"
+    "uv_index": 7,
+    "pressure": 1013,
+    "precip_last_24h": 0.4
   },
   "daily": [
     {
       "date": "2026-08-19",
-      "high": 25.0,
-      "low": 18.0,
-      "condition": "Sunny",
-      "icon": "sunny"
+      "temp_max": 25.0,
+      "temp_min": 18.0,
+      "precipitation": 0,
+      "weather_code": 1,
+      "weather_description": "Mainly clear"
     }
   ],
   "hourly": [
     {
-      "time": "2026-08-19T14:00:00",
+      "time": "2026-08-19T14:00",
       "temperature": 23.0,
-      "condition": "Partly cloudy",
-      "icon": "partly-cloudy"
+      "precipitation": 0,
+      "weather_code": 1,
+      "weather_description": "Mainly clear"
     }
   ],
-  "ai_summary": "Expect warm and dry conditions throughout the day..."
+  "ai_summary": null
 }
 ```
+
+Optional current extras (`feels_like`, `humidity`, `uv_index`, `pressure`,
+`precip_last_24h`) and `place_name` are nullable. The UI hides tiles when they
+are null. WeatherAI is always called with coordinates only. `place_name` comes
+from FastAPI reverse geocoding (Photon), not from WeatherAI.
 
 **Headers:**
 
 | Header | Values | Description |
 |---|---|---|
-| `X-Cache` | `HIT` or `MISS` | Whether the FastAPI cache served this response |
+| `X-Cache` | `HIT` or `MISS` | Whether the FastAPI weather cache served this response |
 | `X-RateLimit-Reset` | unix epoch (429 only) | When the upstream quota resets; only present if upstream provided it |
 
 **Error Responses:**
 
 | Status | Error Code | When |
 |---|---|---|
-| 400 | `bad_request` | Invalid or missing query params (frontend validation) or upstream rejected the request |
-| 403 | `plan_restriction` | WeatherAI returned 403 — requested feature not available on the current plan |
+| 400 | `bad_request` | Invalid or missing query params, or upstream rejected the request |
+| 403 | `plan_restriction` | WeatherAI returned 403 — feature not on the current plan |
 | 429 | `rate_limit` | Upstream rate limit / quota exhausted |
-| 502 | `upstream_auth` | WeatherAI rejected our credentials (upstream 401) — deliberately surfaced as a server-side configuration error, never as a client auth error |
-| 502 | `upstream_error` | WeatherAI returned an unrecoverable 5xx (after retries) or an unclassified upstream error |
-| 502 | `malformed_response` | Upstream returned non-JSON, a non-object body, or data that failed normalization |
-| 503 | `backend_unavailable` | Next.js could not reach the FastAPI backend |
-| 504 | `backend_timeout` | Next.js did not receive a response from FastAPI in time |
+| 502 | `upstream_auth` | WeatherAI rejected credentials (upstream 401) — never returned as HTTP 401 |
+| 502 | `upstream_error` | Unrecoverable upstream 5xx after retries, or unclassified error |
+| 502 | `malformed_response` | Non-JSON, non-object, or data that failed normalization |
+| 503 | `backend_unavailable` | Next.js could not reach FastAPI |
+| 504 | `backend_timeout` | Next.js did not receive a FastAPI response in time |
 | 504 | `timeout` | WeatherAI did not respond within the backend timeout |
 
 **Error Shape:**
@@ -81,14 +98,53 @@ Next.js route handler. Validates params, proxies to FastAPI, forwards the respon
 }
 ```
 
-> **Note on 401:** the backend never returns `401`. Upstream authentication failures (WeatherAI 401) are mapped to `502 upstream_auth` so the browser cannot distinguish a client error from a server configuration problem.
+### GET `/api/geocode`
+
+Thin proxy to FastAPI `GET /geocode?q=`. Resolves a place name to coordinates.
+Photon URLs never appear in the response.
+
+| Param | Required | Constraints |
+|---|---|---|
+| `q` | Yes | Non-empty place query (min length 2 at the Next.js boundary) |
+
+**Success (200):** `{ "lat": -1.2864, "lon": 36.8172, "label": "Nairobi, Kenya" }`
+
+FastAPI currently returns the first Photon match. (A later phase may return a
+candidate list; this document describes what is implemented now.)
+
+**Errors:** 400 `bad_request`, 404 `not_found`, 503 `backend_unavailable` /
+`geocode_unavailable`, 504 timeout.
+
+### GET `/api/reverse`
+
+Thin proxy to FastAPI `GET /reverse?lat=&lon=`.
+
+**Success (200):** `{ "lat": ..., "lon": ..., "label": "Nairobi, Kenya" }`
+
+**Errors:** 400, 404 `not_found` when Photon has no usable name, 503, 504.
+
+### GET `/api/geolocate`
+
+Thin proxy to FastAPI `GET /geolocate`. Approximates lat/lon from the caller's
+public IP when browser GPS is unavailable. Next.js may forward `X-Forwarded-For`.
+The JSON body never includes an IP address or the lookup-provider URL.
+
+**Success (200):** `{ "lat": -1.2833, "lon": 36.8167, "label": "Nairobi, Kenya" }`
+
+**Errors:** 404, 503, 504 — same stable codes as geocode. Permission-denied GPS
+in the browser does **not** call this route.
 
 ---
 
 ## Backend (Internal)
 
-### GET `/health`
+FastAPI routes used only via Next.js (or local tooling), not from the browser
+directly in production.
 
-FastAPI health check. Returns `200` with `{ "status": "ok" }`.
-
-Not exposed to the browser — used by Next.js or infrastructure to verify the backend is running.
+| Endpoint | Description |
+|---|---|
+| `GET /weather` | Normalized weather; `X-Cache: HIT\|MISS` |
+| `GET /geocode?q=` | Photon search → `{ lat, lon, label }` |
+| `GET /reverse?lat=&lon=` | Photon reverse → `{ lat, lon, label }` |
+| `GET /geolocate` | IP approximation → `{ lat, lon, label }` |
+| `GET /health` | Liveness of this process only (`{ "status": "ok" }`). Does not call WeatherAI. |
