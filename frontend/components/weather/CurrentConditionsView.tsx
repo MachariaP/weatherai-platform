@@ -7,11 +7,13 @@ import { LocationStatus } from "@/components/shell/LocationStatus";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { CurrentWeather } from "./CurrentWeather";
 import { AISummary } from "./AISummary";
+import { HourlyScroll } from "./HourlyScroll";
+import { ForecastGrid } from "./ForecastGrid";
 
 /**
- * Phase 6 current-weather view.
+ * Current conditions plus daily and hourly outlook from the public contract.
  *
- * Does not render 7-day forecast, hourly rows, or skeleton layouts.
+ * Does not render skeleton layouts or city search.
  */
 export function CurrentConditionsView() {
   const { location } = useLocation();
@@ -72,6 +74,9 @@ export function CurrentConditionsView() {
         summary={data.ai_summary}
         error={error}
       />
+
+      <HourlyScroll hours={data.hourly} units={units} />
+      <ForecastGrid days={data.daily} units={units} />
     </div>
   );
 }
