@@ -119,9 +119,15 @@ export function useWeather(
     };
   }, [lat, lon, units, ai, tick]);
 
+  // Location can flip from null → set on the same hook instance. Until the
+  // effect starts, treat that as loading so the UI does not flash a
+  // "missing current weather" error.
+  const awaitingFirstResult = hasLocation && data === null && error === null;
+  const loading = hasLocation && (isLoading || awaitingFirstResult);
+
   const status: WeatherStatus = !hasLocation
     ? "idle"
-    : isLoading
+    : loading
       ? "loading"
       : error
         ? "error"
@@ -132,7 +138,7 @@ export function useWeather(
   return {
     status,
     data: hasLocation ? data : null,
-    isLoading: hasLocation && isLoading,
+    isLoading: loading,
     error: hasLocation ? error : null,
     cacheStatus: hasLocation ? cacheStatus : null,
     refetch,
