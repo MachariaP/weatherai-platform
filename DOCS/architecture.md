@@ -77,6 +77,9 @@ subject to change without an explicit architecture decision.
 - **Photon geocoding** — place search and reverse; errors never include Photon URLs
 - **IP geolocation** — approximates lat/lon from the public client IP (or egress IP when the caller is loopback); used when browser GPS is unavailable. Never returns the IP in the JSON body
 - **API key** — `WEATHERAI_API_KEY` only; never exposed to Next.js or the browser
+- **CORS** — `CORS_ORIGINS` lists explicit frontend origins (localhost in
+  development; the production Vercel origin after it exists). Wildcard `*` is
+  rejected. Next.js still owns the browser-facing `/api/*` boundary.
 
 ### Next.js Frontend
 
@@ -147,5 +150,6 @@ shareable `/?lat=&lon=` URL.
 recents, GPS/IP, and the URL all write through it; the URL is synchronized only
 after a committed location selection, not while the user is typing.
 
-Limiter, breaker, and weather cache state are **in-process only**. See
-`DOCS/resilience.md`.
+Limiter, breaker, and weather cache state are **in-process only**. The
+selected production topology is **one FastAPI worker on one instance**, so
+Redis is not required. See `DOCS/deployment.md` and `DOCS/resilience.md`.

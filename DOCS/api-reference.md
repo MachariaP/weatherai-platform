@@ -205,4 +205,5 @@ Do not edit `frontend/lib/generated/api-schema.ts`. Stable aliases live in
 published in OpenAPI.
 
 See `DOCS/resilience.md` for cache/limiter/circuit ordering, logging, and
-the process-local limitation.
+the process-local limitation. See `DOCS/deployment.md` for the 1×1 topology
+and why Redis is deferred.

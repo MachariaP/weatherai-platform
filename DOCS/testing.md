@@ -24,6 +24,7 @@ CI
 ```
 
 Live WeatherAI, Photon, and ipwho.is are **not** used by CI.
+Redis is **not** part of CI: the selected topology is one FastAPI process.
 
 ## Vitest
 

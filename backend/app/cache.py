@@ -3,8 +3,8 @@ Cache abstraction and in-memory TTL implementation.
 
 The interface (WeatherCache protocol) is deliberately simple so the
 implementation can be swapped to Redis when horizontal scaling requires
-shared cache state.  For a single-instance deployment, the in-memory
-implementation has zero latency and no infrastructure dependency.
+shared cache state. The selected production topology is one FastAPI
+process with one worker, so Redis is deferred — see DOCS/deployment.md.
 """
 from __future__ import annotations
 

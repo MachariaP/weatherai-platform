@@ -15,6 +15,7 @@ Phase-by-phase plan for the WeatherAI QA project.
 - The reconciliation phase validates and hardens that work rather than
   expanding scope. It does not add product features.
 - Deployment is **NOT DEPLOYED / NOT VERIFIED** — see `deployment.md`.
+  Phase G selected Vercel + one Render FastAPI worker; Redis is deferred.
 - **Phase A0 + A (location discovery)** — stabilize existing geocode/UI work,
   then add suggestion lists, recent locations, and shareable `/?lat=&lon=`
   URLs.
@@ -26,7 +27,9 @@ Phase-by-phase plan for the WeatherAI QA project.
 - **Phase D (forecast range + saved places)** — UI for existing `days`, and
   local favorites. Later phases are not in this increment.
 - **Phase F (observability + rate limit + circuit breaker)** — process-local
-  WeatherAI protection and JSON request logs. Phase G is not in this increment.
+  WeatherAI protection and JSON request logs. See `DOCS/resilience.md`.
+- **Phase G (deployment topology)** — Vercel + one Render FastAPI worker.
+  Redis is not required for that topology. Deployment itself is Phase H.
 
 ---
 
@@ -124,3 +127,12 @@ Phase-by-phase plan for the WeatherAI QA project.
 - Application limiter on uncached WeatherAI calls (cache HIT bypass)
 - Circuit breaker around retried WeatherAI calls
 - Process-local only; see `DOCS/resilience.md`
+
+## Phase G: Deployment topology (no live deploy)
+
+- Selected: Next.js on Vercel, FastAPI on Render, **1 instance × 1 worker**
+- Redis **not required** for that topology (see `DOCS/deployment.md`)
+- Production CORS: explicit origins only; wildcard rejected
+- `/health` remains liveness; no `/ready` endpoint
+- Phase H is the actual provision/deploy step
+
