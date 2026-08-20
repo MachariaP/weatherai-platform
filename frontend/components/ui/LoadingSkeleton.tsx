@@ -55,3 +55,19 @@ export function HourlySkeleton() {
     </div>
   );
 }
+
+export function AiSummarySkeleton() {
+  return (
+    <div className="rounded-panel border border-accent/20 bg-accent/5 p-5 space-y-3 sm:p-6">
+      <div className="flex items-center gap-3">
+        <Pulse className="h-9 w-9 rounded-lg" />
+        <div className="space-y-2">
+          <Pulse className="h-3.5 w-24" />
+          <Pulse className="h-3 w-32" />
+        </div>
+      </div>
+      <Pulse className="h-4 w-full" />
+      <Pulse className="h-4 w-4/5" />
+    </div>
+  );
+}

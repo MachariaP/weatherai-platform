@@ -4,6 +4,7 @@ import { useLocation } from "@/components/providers/LocationProvider";
 import { usePreferences } from "@/components/providers/PreferencesProvider";
 import { useWeather } from "@/hooks/useWeather";
 import { CurrentWeather } from "./CurrentWeather";
+import { EmptyState } from "./EmptyState";
 import { AISummary } from "./AISummary";
 import { ForecastGrid } from "./ForecastGrid";
 import { HourlyScroll } from "./HourlyScroll";
@@ -12,10 +13,11 @@ import {
   CurrentWeatherSkeleton,
   ForecastSkeleton,
   HourlySkeleton,
+  AiSummarySkeleton,
 } from "@/components/ui/LoadingSkeleton";
 
 export function WeatherDashboard() {
-  const { location, error: locationError } = useLocation();
+  const { location } = useLocation();
   const { units, aiEnabled } = usePreferences();
   const { data, isLoading, error, cacheStatus, refetch } = useWeather(
     location?.lat ?? null,
@@ -25,26 +27,14 @@ export function WeatherDashboard() {
   );
 
   if (!location) {
-    return (
-      <div className="text-center py-24">
-        <p className="text-6xl mb-4">🌍</p>
-        <h2 className="text-xl font-medium text-[var(--foreground)] mb-2">
-          Welcome to WeatherAI
-        </h2>
-        <p className="text-[var(--muted)] max-w-md mx-auto">
-          Enter coordinates above or click &quot;My Location&quot; to get started.
-        </p>
-        {locationError && (
-          <p className="text-sm text-[var(--danger)] mt-4">{locationError}</p>
-        )}
-      </div>
-    );
+    return <EmptyState />;
   }
 
   if (isLoading && !data) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-6 sm:space-y-8">
         <CurrentWeatherSkeleton />
+        {aiEnabled && <AiSummarySkeleton />}
         <ForecastSkeleton />
         <HourlySkeleton />
       </div>
@@ -58,7 +48,7 @@ export function WeatherDashboard() {
   if (!data) return null;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 sm:space-y-8">
       {error && <ErrorBanner error={error} onRetry={refetch} />}
 
       <CurrentWeather
