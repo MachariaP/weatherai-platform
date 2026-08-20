@@ -6,17 +6,20 @@ import { WeatherIcon, getWeatherIconName } from "@/lib/weather-icons";
 import {
   formatWind,
   formatWindDirection,
-  formatTime,
-  formatDate,
+  formatPrecipAmount,
+  formatLatLon,
+  formatTemp,
+  uvBand,
 } from "@/lib/format";
 import {
   WindIcon,
-  CompassIcon,
+  DropletIcon,
+  HumidityIcon,
   SunIcon,
-  MoonIcon,
-  ClockIcon,
-  CheckIcon,
+  GaugeIcon,
   MapPinIcon,
+  CheckIcon,
+  ClockIcon,
 } from "@/components/ui/icons";
 
 interface Props {
@@ -24,13 +27,16 @@ interface Props {
   units: "metric" | "imperial";
   location: string;
   cacheStatus: string | null;
+  lat?: number | null;
+  lon?: number | null;
 }
 
 interface DetailProps {
   icon: ReactNode;
   label: string;
-  value: string;
+  value: ReactNode;
   sub?: string;
+  extra?: ReactNode;
 }
 
 function isFiniteNumber(value: unknown): value is number {
@@ -42,38 +48,41 @@ function formatTemperature(value: unknown): string {
   return String(Math.round(value));
 }
 
-function Detail({ icon, label, value, sub }: DetailProps) {
+function Detail({ icon, label, value, sub, extra }: DetailProps) {
   return (
-    <div className="flex items-start gap-3 rounded-xl border border-border bg-surface/70 p-3.5">
-      <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-card text-text-muted">
-        {icon}
-      </span>
-      <div className="min-w-0">
-        <dt className="text-[11px] font-medium uppercase tracking-wider text-text-muted">
-          {label}
-        </dt>
-        <dd className="truncate text-sm font-semibold text-text">{value}</dd>
-        {sub ? <dd className="text-xs text-text-muted">{sub}</dd> : null}
-      </div>
+    <div className="flex min-h-[7.5rem] flex-col justify-between rounded-card border border-border bg-surface p-4 transition-colors hover:border-border-strong">
+      <dt className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.14em] text-text-muted">
+        <span className="text-text-muted">{icon}</span>
+        {label}
+      </dt>
+      <dd>
+        <p className="truncate text-xl font-semibold tabular-nums text-text">{value}</p>
+        {sub ? <p className="mt-1 text-xs text-text-muted">{sub}</p> : null}
+        {extra}
+      </dd>
     </div>
   );
 }
 
 /**
- * Current conditions from the FastAPI public contract only.
+ * Current conditions from the FastAPI public contract.
  *
- * CurrentWeather has temperature, wind, direction, weather code/description,
- * is_day, and observed_at. It does not include feels-like, humidity, or
- * current precipitation — those are not rendered or invented here.
+ * Optional extras (feels-like, humidity, UV, pressure, 24h precip) render
+ * only when the backend sent a finite value. Missing tiles stay out of the DOM.
  */
-export function CurrentWeather({ data, units, location, cacheStatus }: Props) {
+export function CurrentWeather({
+  data,
+  units,
+  location,
+  cacheStatus,
+  lat = null,
+  lon = null,
+}: Props) {
   const isDay = data.is_day === true;
   const iconName = getWeatherIconName(
     isFiniteNumber(data.weather_code) ? data.weather_code : -1,
     isDay
   );
-  const updatedTime = formatTime(data.observed_at ?? null);
-  const updatedDate = formatDate(data.observed_at ?? null);
   const isCached = cacheStatus === "HIT";
   const description = data.weather_description?.trim() || "Conditions unavailable";
   const temperature = formatTemperature(data.temperature);
@@ -82,94 +91,139 @@ export function CurrentWeather({ data, units, location, cacheStatus }: Props) {
     ? formatWind(data.wind_speed, units)
     : "Unavailable";
   const hasDirection = isFiniteNumber(data.wind_direction);
-  const compass = hasDirection ? formatWindDirection(data.wind_direction) : "Unavailable";
+  const compass = hasDirection ? formatWindDirection(data.wind_direction) : null;
+  const precision = lat != null && lon != null ? formatLatLon(lat, lon) : null;
+  const feelsLike = isFiniteNumber(data.feels_like) ? formatTemp(data.feels_like) : null;
+  const precip24h = isFiniteNumber(data.precip_last_24h) ? data.precip_last_24h : null;
+  const humidity = isFiniteNumber(data.humidity) ? data.humidity : null;
+  const uv = isFiniteNumber(data.uv_index) ? data.uv_index : null;
+  const pressure = isFiniteNumber(data.pressure) ? data.pressure : null;
 
   return (
-    <section
-      aria-label="Current weather"
-      className="rounded-panel border border-border bg-card shadow-card"
-    >
-      <div className="p-5 sm:p-7">
-        <header className="mb-6 flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-text-muted">
-              Current location
-            </p>
-            <h2 className="mt-1 flex items-center gap-1.5 text-lg font-semibold text-text">
-              <MapPinIcon className="h-4 w-4 shrink-0 text-text-muted" />
-              <span className="truncate">{location || "Unknown location"}</span>
-            </h2>
-          </div>
-          {cacheStatus ? (
-            <span
-              className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium ${
-                isCached
-                  ? "border-border-strong bg-surface text-text-secondary"
-                  : "border-success/25 bg-success/10 text-success"
-              }`}
-            >
-              {isCached ? (
-                <ClockIcon className="h-3.5 w-3.5" />
-              ) : (
-                <CheckIcon className="h-3.5 w-3.5" />
-              )}
-              {isCached ? "Cached" : "Live"}
-            </span>
-          ) : null}
-        </header>
+    <section aria-label="Current weather">
+      <header className="mb-4">
+        <h1 className="text-2xl font-semibold tracking-tight text-text sm:text-[32px] sm:leading-10">
+          {location || "Unknown location"}
+        </h1>
+        {precision ? (
+          <p className="mt-1 flex items-center gap-1 font-medium tracking-wide text-text-muted">
+            <MapPinIcon className="h-4 w-4 shrink-0" />
+            <span className="text-sm">{precision}</span>
+          </p>
+        ) : null}
+      </header>
 
-        <div className="flex flex-col gap-8 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex items-center gap-5 sm:gap-6">
-            <div className="grid h-20 w-20 shrink-0 place-items-center rounded-2xl border border-border bg-surface sm:h-24 sm:w-24">
-              <WeatherIcon
-                name={iconName}
-                className="h-11 w-11 text-accent sm:h-14 sm:w-14"
-              />
-            </div>
-            <div>
-              <p className="text-6xl font-extralight leading-none tabular-nums text-text sm:text-7xl">
-                {temperature}
-                {hasTemp ? (
-                  <span className="text-3xl font-light text-text-secondary sm:text-4xl">
-                    {units === "metric" ? "°C" : "°F"}
-                  </span>
-                ) : null}
-              </p>
-              <p className="mt-2 text-base font-medium capitalize text-text-secondary sm:text-lg">
+      <div className="grid gap-4 md:grid-cols-2">
+        <div className="relative min-h-[200px] overflow-hidden rounded-card border border-border bg-surface p-4">
+          <div className="relative z-10 mb-6 flex items-center justify-between gap-3">
+            <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-text-muted">
+              Current conditions
+            </p>
+            {cacheStatus ? (
+              <span
+                className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] font-medium ${
+                  isCached
+                    ? "border-border bg-card text-text-secondary"
+                    : "border-accent/20 bg-accent/10 text-accent"
+                }`}
+              >
+                {isCached ? (
+                  <ClockIcon className="h-3 w-3" />
+                ) : (
+                  <CheckIcon className="h-3 w-3" />
+                )}
+                {isCached ? "Cached" : "Live"}
+              </span>
+            ) : null}
+          </div>
+
+          <div className="relative z-10 flex flex-wrap items-end gap-3">
+            <p className="text-[72px] font-bold leading-[80px] tracking-[-0.02em] tabular-nums text-text">
+              {hasTemp ? `${temperature}°` : temperature}
+            </p>
+            <div className="mb-2 min-w-0">
+              <p className="flex items-center gap-1 text-xl font-semibold capitalize text-accent">
+                <WeatherIcon name={iconName} className="h-6 w-6" />
                 {description}
               </p>
+              {feelsLike ? (
+                <p className="mt-0.5 text-sm text-text-muted">Feels like {feelsLike}</p>
+              ) : null}
               <p className="mt-0.5 text-xs text-text-muted">
-                {isDay ? "Daytime" : "Night"}
+                {units === "metric" ? "°C" : "°F"} · {isDay ? "Daytime" : "Night"}
               </p>
             </div>
           </div>
-
-          <dl className="grid flex-1 grid-cols-2 gap-3 lg:max-w-xl">
-            <Detail
-              icon={<WindIcon className="h-4 w-4" />}
-              label="Wind"
-              value={windValue}
-              sub={hasDirection ? `From ${compass}` : undefined}
-            />
-            <Detail
-              icon={<CompassIcon className="h-4 w-4" />}
-              label="Direction"
-              value={compass}
-              sub={hasDirection ? `${Math.round(data.wind_direction)}°` : undefined}
-            />
-            <Detail
-              icon={isDay ? <SunIcon className="h-4 w-4" /> : <MoonIcon className="h-4 w-4" />}
-              label="Conditions"
-              value={isDay ? "Day" : "Night"}
-            />
-            <Detail
-              icon={<ClockIcon className="h-4 w-4" />}
-              label="Updated"
-              value={updatedTime ?? "Unavailable"}
-              sub={updatedDate ?? undefined}
-            />
-          </dl>
         </div>
+
+        <dl className="grid grid-cols-2 gap-4">
+          <Detail
+            icon={<WindIcon className="h-4 w-4" />}
+            label="Wind"
+            value={
+              isFiniteNumber(data.wind_speed) ? (
+                <>
+                  {Math.round(data.wind_speed)}{" "}
+                  <span className="text-sm font-normal text-text-muted">
+                    {units === "metric" ? "km/h" : "mph"}
+                  </span>
+                </>
+              ) : (
+                windValue
+              )
+            }
+            sub={compass ? `Direction: ${compass}` : undefined}
+          />
+          {precip24h !== null ? (
+            <Detail
+              icon={<DropletIcon className="h-4 w-4" />}
+              label="Precipitation"
+              value={formatPrecipAmount(precip24h, units)}
+              sub="In last 24h"
+            />
+          ) : null}
+          {humidity !== null ? (
+            <Detail
+              icon={<HumidityIcon className="h-4 w-4" />}
+              label="Humidity"
+              value={`${Math.round(humidity)}%`}
+              extra={
+                <div className="mt-2 h-1 overflow-hidden rounded-full bg-border">
+                  <div
+                    className="h-full rounded-full bg-accent"
+                    style={{ width: `${Math.min(100, Math.max(0, humidity))}%` }}
+                  />
+                </div>
+              }
+            />
+          ) : null}
+          {uv !== null ? (
+            <Detail
+              icon={<SunIcon className="h-4 w-4" />}
+              label="UV index"
+              value={
+                <>
+                  {Math.round(uv)}{" "}
+                  <span className="ml-1 rounded border border-warning/30 bg-warning/10 px-1 text-[12px] font-normal text-warning">
+                    {uvBand(uv)}
+                  </span>
+                </>
+              }
+            />
+          ) : null}
+          {pressure !== null ? (
+            <Detail
+              icon={<GaugeIcon className="h-4 w-4" />}
+              label="Pressure"
+              value={
+                <>
+                  {Math.round(pressure)}{" "}
+                  <span className="text-sm font-normal text-text-muted">hPa</span>
+                </>
+              }
+            />
+          ) : null}
+        </dl>
       </div>
     </section>
   );

@@ -40,7 +40,7 @@ describe("HourlyScroll", () => {
     expect(screen.getByText("Slight rain")).toBeDefined();
     expect(screen.getByText("18°")).toBeDefined();
     expect(screen.getByText("20°")).toBeDefined();
-    expect(screen.getByText("1 mm")).toBeDefined();
+    expect(screen.queryByText("1 mm")).toBeNull();
   });
 
   it("shows a fallback when hourly data is missing", () => {
@@ -54,10 +54,10 @@ describe("HourlyScroll", () => {
     expect(screen.queryByRole("list", { name: "Hourly forecast times" })).toBeNull();
   });
 
-  it("labels precipitation in imperial units without converting", () => {
+  it("does not show precipitation on hourly cards", () => {
     render(<HourlyScroll hours={HOURS} units="imperial" />);
-    expect(screen.getByText("1 in")).toBeDefined();
-    expect(screen.getByText("0.4 in")).toBeDefined();
+    expect(screen.queryByText("1 in")).toBeNull();
+    expect(screen.queryByText("0.4 in")).toBeNull();
     expect(screen.queryByText(/mm/)).toBeNull();
   });
 

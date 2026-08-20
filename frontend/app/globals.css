@@ -5,48 +5,40 @@
  * ------------------------------------------------------------------------- */
 
 @theme {
-  /* Colors — neutral dark surfaces */
-  --color-background: #0a1120;
-  --color-surface: #101a2e;
-  --color-surface-elevated: #0d1626;
-  --color-card: #152036;
-  --color-card-hover: #1a2941;
+  /* Colors — Stitch DESIGN.md */
+  --color-background: #0e1513;
+  --color-surface: #1a211f;
+  --color-surface-elevated: #0e1513;
+  --color-card: #161d1b;
+  --color-card-hover: #242b2a;
 
-  --color-border: #24334e;
-  --color-border-strong: #33456b;
+  --color-border: #3c4a46;
+  --color-border-strong: #859490;
 
-  --color-text: #eef3fa;
-  --color-text-secondary: #a8b7cd;
-  --color-text-muted: #7487a3;
+  --color-text: #dde4e1;
+  --color-text-secondary: #bacac5;
+  --color-text-muted: #859490;
 
-  /* Colors — restrained teal/cyan accent family */
-  --color-accent: #2dd4bf;
-  --color-accent-secondary: #22d3ee;
-  --color-accent-strong: #14b8a6;
+  --color-accent: #57f1db;
+  --color-accent-secondary: #5de6ff;
+  --color-accent-strong: #2dd4bf;
+  --color-on-accent: #003731;
 
-  --color-success: #34d399;
-  --color-warning: #fbbf24;
-  --color-error: #f87171;
-  --color-error-strong: #ef4444;
+  --color-success: #10b981;
+  --color-warning: #ffac5a;
+  --color-error: #ffb4ab;
+  --color-error-strong: #93000a;
 
-  /* Typography */
-  --font-sans:
-    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
-    "Helvetica Neue", Arial, sans-serif;
-  --font-display:
-    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
-    "Helvetica Neue", Arial, sans-serif;
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
 
-  /* Radius */
-  --radius-control: 0.625rem;
-  --radius-card: 1rem;
-  --radius-panel: 1.375rem;
+  --radius-control: 0.5rem;
+  --radius-card: 0.5rem;
+  --radius-panel: 0.75rem;
 
-  /* Elevation */
-  --shadow-card:
-    0 1px 2px rgb(2 6 23 / 0.35), 0 16px 40px -16px rgb(2 6 23 / 0.55);
-  --shadow-float:
-    0 2px 4px rgb(2 6 23 / 0.4), 0 20px 50px -20px rgb(2 6 23 / 0.6);
+  --shadow-card: none;
+  --shadow-float: none;
 }
 
 /* ---------------------------------------------------------------------------
@@ -81,8 +73,13 @@ body {
 }
 
 ::selection {
-  background: rgb(45 211 191 / 0.3);
+  background: rgb(87 241 219 / 0.28);
   color: var(--color-text);
+}
+
+.bg-precision-dots {
+  background-image: radial-gradient(#3c4a46 1px, transparent 1px);
+  background-size: 24px 24px;
 }
 
 /* ---------------------------------------------------------------------------
@@ -99,7 +96,7 @@ body {
 /* Slim horizontal scrollbars for forecast rows */
 .scroll-slim {
   scrollbar-width: thin;
-  scrollbar-color: rgb(51 69 107 / 0.9) transparent;
+  scrollbar-color: rgb(60 74 70 / 0.9) transparent;
 }
 .scroll-slim::-webkit-scrollbar {
   height: 6px;
@@ -108,7 +105,7 @@ body {
   background: transparent;
 }
 .scroll-slim::-webkit-scrollbar-thumb {
-  background: rgb(51 69 107 / 0.9);
+  background: rgb(60 74 70 / 0.9);
   border-radius: 9999px;
 }
 

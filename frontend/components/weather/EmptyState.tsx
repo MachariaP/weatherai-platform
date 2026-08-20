@@ -2,9 +2,14 @@
 
 import { useLocation } from "@/components/providers/LocationProvider";
 import { WeatherIcon } from "@/lib/weather-icons";
-import { AlertIcon, CrosshairIcon, MapPinIcon } from "@/components/ui/icons";
-
-const CAPABILITIES = ["Current conditions", "7-day forecast", "Hourly outlook"];
+import {
+  AlertIcon,
+  CalendarIcon,
+  ClockIcon,
+  CrosshairIcon,
+  SearchIcon,
+  SparkleIcon,
+} from "@/components/ui/icons";
 
 export function EmptyState() {
   const { detectLocation, detecting, error } = useLocation();
@@ -15,40 +20,45 @@ export function EmptyState() {
       behavior: "smooth",
       block: "center",
     });
-    document.getElementById("weather-lat")?.focus({ preventScroll: true });
+    const lat = document.getElementById("weather-lat");
+    if (lat instanceof HTMLElement) {
+      lat.focus({ preventScroll: true });
+      return;
+    }
+    document.getElementById("weather-query")?.focus({ preventScroll: true });
   }
 
   return (
     <section
-      aria-label="Look up the weather"
-      className="flex flex-col items-center pb-10 pt-10 text-center sm:pt-16"
+      aria-label="Your weather, at a glance"
+      className="bg-precision-dots relative -mx-4 flex min-h-[calc(100dvh-12rem)] flex-col items-center justify-center px-4 pb-16 pt-8 text-center sm:-mx-6 sm:px-6 lg:-mx-6 lg:px-6"
     >
       <div
         aria-hidden="true"
-        className="mb-8 grid h-28 w-28 place-items-center rounded-full border border-border bg-surface sm:h-32 sm:w-32"
+        className="mb-8 grid h-28 w-28 place-items-center rounded-full border border-border bg-surface shadow-[0_0_40px_rgba(87,241,219,0.05)] sm:h-32 sm:w-32"
       >
-        <WeatherIcon name="partly-day" className="h-16 w-16 text-accent sm:h-20 sm:w-20" />
+        <WeatherIcon name="cloudy" className="h-14 w-14 text-accent sm:h-16 sm:w-16" />
       </div>
 
-      <h1 className="text-2xl font-semibold tracking-tight text-text sm:text-3xl">
-        Look up the weather
+      <h1 className="text-3xl font-semibold tracking-tight text-text sm:text-4xl">
+        Your weather, at a glance.
       </h1>
-      <p className="mt-2 max-w-md text-text-secondary">
-        Enter a latitude and longitude, or use your current location. City search
-        is not available.
+      <p className="mt-3 max-w-md text-base leading-relaxed text-text-secondary">
+        Enter coordinates or use your location to get started with analytical
+        meteorological data precision.
       </p>
 
-      <div className="mt-7 flex flex-col gap-3 sm:flex-row">
+      <div className="mt-8 flex w-full max-w-md flex-col gap-4 sm:w-auto sm:flex-row">
         <button
           type="button"
           onClick={detectLocation}
           disabled={detecting}
-          className="focus-ring inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-accent px-5 text-sm font-semibold text-background transition-colors hover:bg-accent-strong disabled:opacity-60"
+          className="focus-ring inline-flex h-12 items-center justify-center gap-2 rounded-control bg-accent px-6 text-sm font-semibold text-on-accent transition-colors hover:bg-accent-strong disabled:opacity-60"
         >
           {detecting ? (
             <span
               aria-hidden="true"
-              className="h-4 w-4 rounded-full border-2 border-background/30 border-t-background motion-safe:animate-spin"
+              className="h-4 w-4 rounded-full border-2 border-on-accent/30 border-t-on-accent motion-safe:animate-spin"
             />
           ) : (
             <CrosshairIcon className="h-4 w-4" />
@@ -58,33 +68,37 @@ export function EmptyState() {
         <button
           type="button"
           onClick={focusCoordinateSearch}
-          className="focus-ring inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-border bg-surface px-5 text-sm font-medium text-text-secondary shadow-card transition-colors hover:border-border-strong hover:text-text"
+          className="focus-ring inline-flex h-12 items-center justify-center gap-2 rounded-control border border-border bg-surface px-6 text-sm font-medium text-text transition-colors hover:border-accent"
         >
-          <MapPinIcon className="h-4 w-4" />
+          <SearchIcon className="h-4 w-4" />
           Search by coordinates
         </button>
-      </div>
-
-      <div className="mt-8 flex flex-wrap items-center justify-center gap-2">
-        {CAPABILITIES.map((feature) => (
-          <span
-            key={feature}
-            className="rounded-md border border-border bg-surface px-2.5 py-1 text-xs text-text-muted"
-          >
-            {feature}
-          </span>
-        ))}
       </div>
 
       {error ? (
         <p
           role="alert"
-          className="mt-6 inline-flex items-center gap-2 rounded-lg border border-warning/25 bg-warning/10 px-3 py-1.5 text-sm text-warning"
+          className="mt-6 inline-flex items-center gap-2 rounded-control border border-warning/25 bg-warning/10 px-3 py-1.5 text-sm text-warning"
         >
           <AlertIcon className="h-4 w-4 shrink-0" />
           {error}
         </p>
       ) : null}
+
+      <div className="mt-12 flex w-full max-w-lg flex-wrap justify-center gap-x-8 gap-y-4 border-t border-border pt-8">
+        <p className="flex items-center gap-2 text-[12px] font-medium tracking-[0.05em] text-text-muted">
+          <CalendarIcon className="h-5 w-5" />
+          7-day forecast
+        </p>
+        <p className="flex items-center gap-2 text-[12px] font-medium tracking-[0.05em] text-text-muted">
+          <ClockIcon className="h-5 w-5" />
+          Hourly outlook
+        </p>
+        <p className="flex items-center gap-2 text-[12px] font-medium tracking-[0.05em] text-text-muted">
+          <SparkleIcon className="h-5 w-5" />
+          AI insights
+        </p>
+      </div>
     </section>
   );
 }

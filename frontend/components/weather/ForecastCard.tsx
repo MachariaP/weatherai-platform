@@ -5,11 +5,9 @@ import { WeatherIcon, getWeatherIconName } from "@/lib/weather-icons";
 import {
   formatDayName,
   formatForecastDate,
-  formatPrecip,
   formatTemp,
   type Units,
 } from "@/lib/format";
-import { DropletIcon } from "@/components/ui/icons";
 
 interface Props {
   day: ForecastDay;
@@ -25,10 +23,9 @@ function tempLabel(value: unknown): string {
 }
 
 /**
- * One day from FastAPI ForecastDay. Does not invent feels-like or
- * other fields that are not on the public contract.
+ * One day from FastAPI ForecastDay. High/low only — no invented extras.
  */
-export function ForecastCard({ day, units }: Props) {
+export function ForecastCard({ day }: Props) {
   const iconName = getWeatherIconName(
     isFiniteNumber(day.weather_code) ? day.weather_code : -1
   );
@@ -37,52 +34,40 @@ export function ForecastCard({ day, units }: Props) {
   const dateLabel = hasDate ? formatForecastDate(day.date) : null;
   const isToday = dayName === "Today";
   const description = day.weather_description?.trim() || "Conditions unavailable";
-  const precip = isFiniteNumber(day.precipitation)
-    ? formatPrecip(day.precipitation, units)
-    : "";
   const high = tempLabel(day.temp_max);
   const low = tempLabel(day.temp_min);
 
   return (
     <article
-      className={`w-28 shrink-0 rounded-card border p-3.5 text-center transition-colors md:w-auto ${
-        isToday
-          ? "border-accent/30 bg-accent/5"
-          : "border-border bg-card hover:bg-card-hover"
+      className={`relative flex items-center justify-between px-4 py-2 ${
+        isToday ? "bg-accent/5" : ""
       }`}
-      aria-label={`${dayName}${dateLabel ? `, ${dateLabel}` : ""}: ${description}, high ${high}, low ${low}${precip ? `, ${precip}` : ""}`}
+      aria-label={`${dayName}${dateLabel ? `, ${dateLabel}` : ""}: ${description}, high ${high}, low ${low}`}
     >
+      {isToday ? (
+        <span
+          aria-hidden="true"
+          className="absolute left-0 hidden h-full w-1 rounded-r-full bg-accent lg:block"
+        />
+      ) : null}
       <p
-        className={`text-xs font-semibold uppercase tracking-wide ${
-          isToday ? "text-accent" : "text-text-muted"
+        className={`w-12 shrink-0 text-sm font-medium ${
+          isToday ? "text-accent" : "text-text-secondary"
         }`}
       >
         {dayName}
       </p>
-      {dateLabel ? (
-        <p className="mt-0.5 text-[11px] text-text-muted">{dateLabel}</p>
-      ) : null}
-      <div className="my-3 grid place-items-center">
+      <div className="flex flex-1 items-center justify-center">
         <WeatherIcon
           name={iconName}
-          className={`h-8 w-8 ${
-            isToday ? "text-accent" : "text-text-secondary"
-          }`}
+          className={`h-5 w-5 ${isToday ? "text-accent" : "text-text-secondary"}`}
         />
       </div>
-      <p className="truncate text-[11px] capitalize text-text-secondary">
-        {description}
+      <p className="sr-only">{description}</p>
+      <p className="flex w-24 shrink-0 items-center justify-end gap-2 text-sm tabular-nums">
+        <span className="text-text">{high}</span>
+        <span className="text-text-muted">{low}</span>
       </p>
-      <p className="mt-1.5 text-sm font-semibold tabular-nums text-text">
-        {high}
-        <span className="font-medium text-text-muted"> / {low}</span>
-      </p>
-      {precip ? (
-        <p className="mt-2 inline-flex items-center gap-1 rounded-md bg-accent/10 px-2 py-0.5 text-[11px] font-medium text-accent">
-          <DropletIcon className="h-3 w-3" />
-          {precip}
-        </p>
-      ) : null}
     </article>
   );
 }

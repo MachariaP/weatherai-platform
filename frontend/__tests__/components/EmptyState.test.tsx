@@ -2,7 +2,7 @@
  * @vitest-environment jsdom
  */
 import { describe, it, expect, afterEach, vi } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { EmptyState } from "@/components/weather/EmptyState";
 import { LocationProvider } from "@/components/providers/LocationProvider";
 import { SearchBar } from "@/components/ui/SearchBar";
@@ -24,15 +24,22 @@ function renderEmpty() {
 describe("EmptyState", () => {
   it("explains the coordinate lookup workflow", () => {
     renderEmpty();
-    expect(screen.getByRole("heading", { name: "Look up the weather" })).toBeDefined();
-    expect(screen.getByText(/latitude and longitude/i)).toBeDefined();
-    expect(screen.getByText(/city search is not available/i)).toBeDefined();
+    expect(screen.getByRole("heading", { name: "Your weather, at a glance." })).toBeDefined();
+    expect(screen.getByText(/enter coordinates or use your location/i)).toBeDefined();
+    expect(screen.queryByText(/city search is not available/i)).toBeNull();
   });
 
   it("offers coordinate search and my location", () => {
     renderEmpty();
     expect(screen.getByRole("button", { name: /use my location/i })).toBeDefined();
     expect(screen.getByRole("button", { name: /search by coordinates/i })).toBeDefined();
+  });
+
+  it("shows capability labels from the empty-state canvas", () => {
+    renderEmpty();
+    expect(screen.getByText("7-day forecast")).toBeDefined();
+    expect(screen.getByText("Hourly outlook")).toBeDefined();
+    expect(screen.getByText("AI insights")).toBeDefined();
   });
 
   it("focuses the coordinate fields from the empty-state action", () => {
@@ -42,18 +49,12 @@ describe("EmptyState", () => {
     expect(document.activeElement).toBe(lat);
   });
 
-  it("does not offer city search", () => {
-    renderEmpty();
-    expect(screen.queryByPlaceholderText(/city/i)).toBeNull();
-    expect(screen.queryByLabelText(/city/i)).toBeNull();
-  });
-
   it("does not surface a geolocation error initially", () => {
     renderEmpty();
     expect(screen.queryByRole("alert")).toBeNull();
   });
 
-  it("shows an unavailable-location alert when geolocation is denied", () => {
+  it("shows an unavailable-location alert when geolocation is denied", async () => {
     vi.stubGlobal("navigator", {
       geolocation: {
         getCurrentPosition: (
@@ -73,7 +74,9 @@ describe("EmptyState", () => {
 
     renderEmpty();
     fireEvent.click(screen.getByRole("button", { name: "Use my location" }));
-    expect(screen.getByRole("alert").textContent).toMatch(/permission was denied/i);
+    await waitFor(() => {
+      expect(screen.getByRole("alert").textContent).toMatch(/permission was denied/i);
+    });
     expect(screen.queryByText(/chrome-internal/)).toBeNull();
   });
 });

@@ -9,7 +9,7 @@ export function UnitToggle() {
     <div
       role="group"
       aria-label="Temperature units"
-      className="flex items-center rounded-xl border border-border bg-surface p-1 shadow-card"
+      className="flex items-center rounded-full border border-border bg-surface p-0.5"
     >
       <button
         type="button"
@@ -17,7 +17,7 @@ export function UnitToggle() {
         aria-label="Celsius"
         onClick={() => setUnits("metric")}
         title="Celsius"
-        className="focus-ring rounded-lg px-2 py-1.5 text-sm font-semibold text-text-muted transition-colors hover:text-text aria-pressed:bg-accent aria-pressed:text-background sm:px-2.5"
+        className="focus-ring rounded-full px-2.5 py-1.5 text-xs font-semibold text-text-muted transition-colors hover:text-text aria-pressed:bg-accent aria-pressed:text-on-accent"
       >
         °C
       </button>
@@ -27,7 +27,7 @@ export function UnitToggle() {
         aria-label="Fahrenheit"
         onClick={() => setUnits("imperial")}
         title="Fahrenheit"
-        className="focus-ring rounded-lg px-2 py-1.5 text-sm font-semibold text-text-muted transition-colors hover:text-text aria-pressed:bg-accent aria-pressed:text-background sm:px-2.5"
+        className="focus-ring rounded-full px-2.5 py-1.5 text-xs font-semibold text-text-muted transition-colors hover:text-text aria-pressed:bg-accent aria-pressed:text-on-accent"
       >
         °F
       </button>

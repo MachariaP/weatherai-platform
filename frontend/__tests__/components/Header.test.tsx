@@ -2,11 +2,12 @@
  * @vitest-environment jsdom
  */
 import { describe, it, expect, afterEach, vi } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { Header } from "@/components/ui/Header";
 import { LocationProvider } from "@/components/providers/LocationProvider";
 import { PreferencesProvider } from "@/components/providers/PreferencesProvider";
+import { ViewProvider } from "@/components/providers/ViewProvider";
 
 afterEach(() => {
   cleanup();
@@ -18,7 +19,9 @@ afterEach(() => {
 function wrapper({ children }: { children: ReactNode }) {
   return (
     <LocationProvider>
-      <PreferencesProvider>{children}</PreferencesProvider>
+      <PreferencesProvider>
+        <ViewProvider>{children}</ViewProvider>
+      </PreferencesProvider>
     </LocationProvider>
   );
 }
@@ -28,16 +31,17 @@ function renderHeader() {
 }
 
 describe("Header shell controls", () => {
-  it("renders brand, search, geolocation, units, and AI controls once", () => {
+  it("renders brand, search, geolocation, and settings without unit or AI toggles", () => {
     renderHeader();
 
     expect(screen.getByRole("link", { name: "WeatherAI home" })).toBeDefined();
-    expect(screen.getByRole("form", { name: "Search by coordinates" })).toBeDefined();
+    expect(screen.getByRole("form", { name: "Search location" })).toBeDefined();
     expect(screen.getAllByLabelText("Latitude")).toHaveLength(1);
     expect(screen.getAllByLabelText("Longitude")).toHaveLength(1);
     expect(screen.getByRole("button", { name: "Use my location" })).toBeDefined();
-    expect(screen.getByRole("group", { name: "Temperature units" })).toBeDefined();
-    expect(screen.getByRole("switch", { name: "AI insights" })).toBeDefined();
+    expect(screen.getByRole("button", { name: "Settings" })).toBeDefined();
+    expect(screen.queryByRole("group", { name: "Temperature units" })).toBeNull();
+    expect(screen.queryByRole("switch", { name: "AI insights" })).toBeNull();
   });
 
   it("keeps search reachable on a stacked mobile layout class", () => {
@@ -47,37 +51,15 @@ describe("Header shell controls", () => {
     expect(searchWrap?.className).toMatch(/md:flex-1/);
   });
 
-  it("switches units from metric to imperial", () => {
-    renderHeader();
-    const fahrenheit = screen.getByRole("button", { name: "Fahrenheit" });
-    expect(screen.getByRole("button", { name: "Celsius" }).getAttribute("aria-pressed")).toBe(
-      "true"
-    );
-    fireEvent.click(fahrenheit);
-    expect(fahrenheit.getAttribute("aria-pressed")).toBe("true");
-    expect(localStorage.getItem("units")).toBe("imperial");
-  });
-
-  it("toggles the AI preference on and off", () => {
-    renderHeader();
-    const toggle = screen.getByRole("switch", { name: "AI insights" });
-    expect(toggle.getAttribute("aria-checked")).toBe("false");
-    fireEvent.click(toggle);
-    expect(toggle.getAttribute("aria-checked")).toBe("true");
-    expect(localStorage.getItem("ai")).toBe("true");
-    fireEvent.click(toggle);
-    expect(toggle.getAttribute("aria-checked")).toBe("false");
-  });
-
   it("sets location from coordinate search", () => {
     renderHeader();
     fireEvent.change(screen.getByLabelText("Latitude"), { target: { value: "-1.29" } });
     fireEvent.change(screen.getByLabelText("Longitude"), { target: { value: "36.82" } });
-    fireEvent.submit(screen.getByRole("form", { name: "Search by coordinates" }));
+    fireEvent.submit(screen.getByRole("form", { name: "Search location" }));
     expect(screen.getByText(/Location set to/)).toBeDefined();
   });
 
-  it("uses geolocation success to set coordinates", () => {
+  it("uses geolocation success to set coordinates", async () => {
     vi.stubGlobal("navigator", {
       geolocation: {
         getCurrentPosition: (success: PositionCallback) => {
@@ -105,10 +87,12 @@ describe("Header shell controls", () => {
 
     renderHeader();
     fireEvent.click(screen.getByRole("button", { name: "Use my location" }));
-    expect(screen.getByText(/Location set to/)).toBeDefined();
+    await waitFor(() => {
+      expect(screen.getByText(/Location set to/)).toBeDefined();
+    });
   });
 
-  it("shows a safe geolocation failure without leaking internals", () => {
+  it("shows a safe geolocation failure without leaking internals", async () => {
     vi.stubGlobal("navigator", {
       geolocation: {
         getCurrentPosition: (
@@ -128,7 +112,9 @@ describe("Header shell controls", () => {
 
     renderHeader();
     fireEvent.click(screen.getByRole("button", { name: "Use my location" }));
-    expect(screen.getByText("Location permission was denied")).toBeDefined();
+    await waitFor(() => {
+      expect(screen.getByText("Location permission was denied")).toBeDefined();
+    });
     expect(screen.queryByText(/chrome-internal/)).toBeNull();
   });
 });

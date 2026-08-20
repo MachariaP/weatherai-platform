@@ -7,8 +7,10 @@ import type { ReactNode } from "react";
 import type { WeatherResponse } from "@/lib/types";
 import { CurrentConditionsView } from "@/components/weather/CurrentConditionsView";
 import { Header } from "@/components/ui/Header";
+import { BottomNav } from "@/components/ui/BottomNav";
 import { LocationProvider } from "@/components/providers/LocationProvider";
 import { PreferencesProvider } from "@/components/providers/PreferencesProvider";
+import { ViewProvider } from "@/components/providers/ViewProvider";
 
 const MOCK_WEATHER: WeatherResponse = {
   lat: -1.2921,
@@ -41,8 +43,11 @@ function wrapper({ children }: { children: ReactNode }) {
   return (
     <LocationProvider>
       <PreferencesProvider>
-        <Header />
-        {children}
+        <ViewProvider>
+          <Header />
+          {children}
+          <BottomNav />
+        </ViewProvider>
       </PreferencesProvider>
     </LocationProvider>
   );
@@ -51,7 +56,7 @@ function wrapper({ children }: { children: ReactNode }) {
 function searchNairobi() {
   fireEvent.change(screen.getByLabelText("Latitude"), { target: { value: "-1.2921" } });
   fireEvent.change(screen.getByLabelText("Longitude"), { target: { value: "36.8219" } });
-  fireEvent.submit(screen.getByRole("form", { name: "Search by coordinates" }));
+  fireEvent.submit(screen.getByRole("form", { name: "Search location" }));
 }
 
 beforeEach(() => {
@@ -68,7 +73,7 @@ afterEach(() => {
 describe("CurrentConditionsView", () => {
   it("keeps the lookup prompt until a location is chosen", () => {
     render(<CurrentConditionsView />, { wrapper });
-    expect(screen.getByRole("heading", { name: "Look up the weather" })).toBeDefined();
+    expect(screen.getByRole("heading", { name: "Your weather, at a glance." })).toBeDefined();
     expect(screen.queryByRole("region", { name: "Current weather" })).toBeNull();
   });
 
@@ -93,7 +98,7 @@ describe("CurrentConditionsView", () => {
 
     await waitFor(() => expect(screen.getByRole("region", { name: "Current weather" })).toBeDefined());
     expect(screen.getByText("Overcast")).toBeDefined();
-    expect(screen.getByText("20")).toBeDefined();
+    expect(screen.getByText("20°")).toBeDefined();
     expect(screen.getByRole("region", { name: "Current weather" }).textContent).toContain("°C");
     expect(screen.getByText("Hourly forecast is not available.")).toBeDefined();
     expect(screen.getByText("Daily forecast is not available.")).toBeDefined();
@@ -107,8 +112,8 @@ describe("CurrentConditionsView", () => {
   });
 
   it("shows an honest empty AI state when enabled and summary is null", async () => {
+    localStorage.setItem("ai", "true");
     render(<CurrentConditionsView />, { wrapper });
-    fireEvent.click(screen.getByRole("switch", { name: "AI insights" }));
     searchNairobi();
 
     await waitFor(() =>
@@ -123,8 +128,8 @@ describe("CurrentConditionsView", () => {
         jsonResponse({ ...MOCK_WEATHER, ai_summary: "Warm afternoon with light wind." })
       )
     );
+    localStorage.setItem("ai", "true");
     render(<CurrentConditionsView />, { wrapper });
-    fireEvent.click(screen.getByRole("switch", { name: "AI insights" }));
     searchNairobi();
 
     await waitFor(() =>
@@ -142,8 +147,8 @@ describe("CurrentConditionsView", () => {
         )
       )
     );
+    localStorage.setItem("ai", "true");
     render(<CurrentConditionsView />, { wrapper });
-    fireEvent.click(screen.getByRole("switch", { name: "AI insights" }));
     searchNairobi();
 
     await waitFor(() => expect(screen.getByRole("alert")).toBeDefined());
@@ -312,5 +317,57 @@ describe("CurrentConditionsView", () => {
     expect(screen.getByText("Conditions unavailable")).toBeDefined();
     expect(screen.getAllByText("Unavailable").length).toBeGreaterThan(0);
     expect(screen.queryByText("feels like")).toBeNull();
+  });
+
+  it("hides humidity and UV when the contract did not send them", async () => {
+    render(<CurrentConditionsView />, { wrapper });
+    searchNairobi();
+    await waitFor(() => expect(screen.getByText("Overcast")).toBeDefined());
+    expect(screen.queryByText(/humidity/i)).toBeNull();
+    expect(screen.queryByText(/uv index/i)).toBeNull();
+  });
+
+  it("renders a mobile bottom nav with the dashboard views", async () => {
+    render(<CurrentConditionsView />, { wrapper });
+    const nav = screen.getByRole("navigation", { name: "Mobile views" });
+    expect(nav.className).toMatch(/md:hidden/);
+    expect(screen.getAllByRole("button", { name: "Dashboard" }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole("button", { name: "Forecast" }).length).toBeGreaterThan(0);
+    expect(screen.getByRole("button", { name: "AI Insights" })).toBeDefined();
+    expect(screen.getAllByRole("button", { name: "Settings" }).length).toBeGreaterThan(0);
+  });
+
+  it("opens settings where unit and AI toggles still persist", () => {
+    render(<CurrentConditionsView />, { wrapper });
+    fireEvent.click(screen.getAllByRole("button", { name: "Settings" })[0]);
+    expect(screen.getByRole("region", { name: "Settings" })).toBeDefined();
+    fireEvent.click(screen.getByRole("button", { name: "Fahrenheit" }));
+    expect(localStorage.getItem("units")).toBe("imperial");
+    fireEvent.click(screen.getByRole("switch", { name: "AI insights" }));
+    expect(localStorage.getItem("ai")).toBe("true");
+  });
+
+  it("fills coordinates from a city geocode before fetching weather", async () => {
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.startsWith("/api/geocode")) {
+        return Promise.resolve(
+          jsonResponse({ lat: -1.2864, lon: 36.8172, label: "Nairobi, Kenya" })
+        );
+      }
+      return Promise.resolve(jsonResponse({ ...MOCK_WEATHER, place_name: "Nairobi, Kenya" }));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<CurrentConditionsView />, { wrapper });
+    fireEvent.change(screen.getByLabelText("Location or coordinates"), {
+      target: { value: "Nairobi" },
+    });
+    fireEvent.submit(screen.getByRole("form", { name: "Search location" }));
+
+    await waitFor(() =>
+      expect(screen.getAllByText("Nairobi, Kenya").length).toBeGreaterThan(0)
+    );
+    expect(screen.getByText("Overcast")).toBeDefined();
   });
 });

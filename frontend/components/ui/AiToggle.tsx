@@ -12,11 +12,12 @@ export function AiToggle() {
       aria-checked={aiEnabled}
       aria-label="AI insights"
       onClick={() => setAiEnabled(!aiEnabled)}
-      className="focus-ring inline-flex h-10 shrink-0 items-center gap-2 rounded-xl border border-border bg-surface px-2 transition-colors hover:border-border-strong sm:px-2.5"
+      className={`focus-ring inline-flex h-10 w-14 shrink-0 items-center justify-center rounded-control border px-2 transition-colors ${
+        aiEnabled
+          ? "border-accent/30 bg-accent/15"
+          : "border-border bg-surface hover:border-border-strong"
+      }`}
     >
-      <span className="hidden text-sm font-medium text-text-secondary sm:inline">
-        AI insights
-      </span>
       <span
         aria-hidden="true"
         className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${

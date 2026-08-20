@@ -1,8 +1,8 @@
 /**
  * @vitest-environment jsdom
  */
-import { describe, it, expect, afterEach, vi } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { describe, it, expect, afterEach } from "vitest";
+import { cleanup, render, screen } from "@testing-library/react";
 import { ForecastGrid } from "@/components/weather/ForecastGrid";
 import type { ForecastDay } from "@/lib/types";
 
@@ -44,7 +44,7 @@ describe("ForecastGrid", () => {
     const daily = screen.getByRole("region", { name: "7-day forecast" });
     expect(daily.textContent).toContain("25°");
     expect(daily.textContent).toContain("14°");
-    expect(screen.getByText("2 mm")).toBeDefined();
+    expect(screen.queryByText("2 mm")).toBeNull();
   });
 
   it("shows a fallback when daily data is missing", () => {
@@ -58,10 +58,10 @@ describe("ForecastGrid", () => {
     expect(screen.queryByRole("list", { name: "Daily forecast days" })).toBeNull();
   });
 
-  it("labels precipitation in imperial units without converting", () => {
+  it("shows high and low only, without precipitation on the row", () => {
     render(<ForecastGrid days={DAYS} units="imperial" />);
-    expect(screen.getByText("2 in")).toBeDefined();
-    expect(screen.getByText("0.3 in")).toBeDefined();
+    expect(screen.queryByText("2 in")).toBeNull();
+    expect(screen.queryByText("0.3 in")).toBeNull();
     expect(screen.queryByText(/mm/)).toBeNull();
   });
 
@@ -93,20 +93,11 @@ describe("ForecastGrid", () => {
     expect(screen.queryByText(/mm/)).toBeNull();
   });
 
-  it("uses a horizontally scrollable row that becomes a grid on medium screens", () => {
+  it("renders days as a vertical list", () => {
     render(<ForecastGrid days={DAYS} units="metric" />);
     const list = screen.getByRole("list", { name: "Daily forecast days" });
-    expect(list.className).toMatch(/overflow-x-auto/);
-    expect(list.className).toMatch(/md:grid/);
-    expect(list.getAttribute("tabindex")).toBe("0");
-  });
-
-  it("scrolls the daily row with arrow keys", () => {
-    render(<ForecastGrid days={DAYS} units="metric" />);
-    const list = screen.getByRole("list", { name: "Daily forecast days" });
-    const scrollBy = vi.fn();
-    Object.assign(list, { scrollBy });
-    fireEvent.keyDown(list, { key: "ArrowRight" });
-    expect(scrollBy).toHaveBeenCalledWith({ left: 124, behavior: "smooth" });
+    expect(list.className).toMatch(/overflow-hidden/);
+    expect(list.getAttribute("tabindex")).toBeNull();
+    expect(screen.getAllByRole("listitem")).toHaveLength(3);
   });
 });

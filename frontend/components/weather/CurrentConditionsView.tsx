@@ -2,7 +2,9 @@
 
 import { useLocation } from "@/components/providers/LocationProvider";
 import { usePreferences } from "@/components/providers/PreferencesProvider";
+import { useAppView } from "@/components/providers/ViewProvider";
 import { useWeather } from "@/hooks/useWeather";
+import { formatLatLon } from "@/lib/format";
 import { EmptyState } from "./EmptyState";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { WeatherLoading } from "@/components/ui/LoadingSkeleton";
@@ -10,19 +12,25 @@ import { CurrentWeather } from "./CurrentWeather";
 import { AISummary } from "./AISummary";
 import { HourlyScroll } from "./HourlyScroll";
 import { ForecastGrid } from "./ForecastGrid";
+import { SettingsPanel } from "./SettingsPanel";
 
 /**
- * Async weather states: empty, loading, success, error, and partial data.
+ * Async weather states: empty, loading, success, error, and view switching.
  */
 export function CurrentConditionsView() {
   const { location } = useLocation();
   const { units, aiEnabled } = usePreferences();
+  const { view } = useAppView();
   const { data, error, cacheStatus, refetch } = useWeather(
     location?.lat ?? null,
     location?.lon ?? null,
     units,
     aiEnabled
   );
+
+  if (view === "settings") {
+    return <SettingsPanel />;
+  }
 
   if (!location) {
     return <EmptyState />;
@@ -53,25 +61,70 @@ export function CurrentConditionsView() {
     );
   }
 
+  const heading =
+    data.place_name?.trim() || location.label || "Unknown location";
+  const coordsLabel = formatLatLon(data.lat, data.lon);
+
+  const hero = (
+    <CurrentWeather
+      data={data.current}
+      units={units}
+      location={heading}
+      cacheStatus={cacheStatus}
+      lat={data.lat}
+      lon={data.lon}
+    />
+  );
+
+  if (view === "forecast") {
+    return (
+      <div className="space-y-6 pt-2">
+        {error ? <ErrorBanner error={error} onRetry={refetch} /> : null}
+        {coordsLabel ? (
+          <p className="text-sm text-text-muted">{coordsLabel}</p>
+        ) : null}
+        <ForecastGrid days={data.daily} units={units} />
+      </div>
+    );
+  }
+
+  if (view === "insights") {
+    return (
+      <div className="mx-auto max-w-2xl space-y-6 pt-2">
+        {error ? <ErrorBanner error={error} onRetry={refetch} /> : null}
+        {aiEnabled ? (
+          <AISummary enabled summary={data.ai_summary} error={error} />
+        ) : (
+          <section
+            aria-label="AI weather insight"
+            className="rounded-card border border-border bg-surface p-5 text-sm text-text-secondary"
+          >
+            Turn on AI insights in Settings to request a summary for this location.
+          </section>
+        )}
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-6 pt-4 sm:space-y-8">
+    <div className="space-y-6 pt-2 sm:space-y-8">
       {error ? <ErrorBanner error={error} onRetry={refetch} /> : null}
 
-      <CurrentWeather
-        data={data.current}
-        units={units}
-        location={location.label}
-        cacheStatus={cacheStatus}
-      />
+      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-12">
+        <div className="flex flex-col gap-8 lg:col-span-8">
+          {hero}
+          <HourlyScroll hours={data.hourly} units={units} />
+        </div>
 
-      <AISummary
-        enabled={aiEnabled}
-        summary={data.ai_summary}
-        error={error}
-      />
-
-      <HourlyScroll hours={data.hourly} units={units} />
-      <ForecastGrid days={data.daily} units={units} />
+        <aside className="flex flex-col gap-8 border-t border-border pt-8 lg:col-span-4 lg:border-l lg:border-t-0 lg:pl-8 lg:pt-0">
+          <AISummary
+            enabled={aiEnabled}
+            summary={data.ai_summary}
+            error={error}
+          />
+          <ForecastGrid days={data.daily} units={units} />
+        </aside>
+      </div>
     </div>
   );
 }
