@@ -9,12 +9,7 @@ import { AISummary } from "./AISummary";
 import { ForecastGrid } from "./ForecastGrid";
 import { HourlyScroll } from "./HourlyScroll";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
-import {
-  CurrentWeatherSkeleton,
-  ForecastSkeleton,
-  HourlySkeleton,
-  AiSummarySkeleton,
-} from "@/components/ui/LoadingSkeleton";
+import { WeatherLoading } from "@/components/ui/LoadingSkeleton";
 
 export function WeatherDashboard() {
   const { location } = useLocation();
@@ -31,14 +26,7 @@ export function WeatherDashboard() {
   }
 
   if (isLoading && !data) {
-    return (
-      <div className="space-y-6 sm:space-y-8">
-        <CurrentWeatherSkeleton />
-        {aiEnabled && <AiSummarySkeleton />}
-        <ForecastSkeleton />
-        <HourlySkeleton />
-      </div>
-    );
+    return <WeatherLoading showAi={aiEnabled} />;
   }
 
   if (error && !data) {

@@ -2,7 +2,9 @@
 
 function Pulse({ className = "" }: { className?: string }) {
   return (
-    <div className={`animate-pulse rounded-md bg-border/60 ${className}`} />
+    <div
+      className={`rounded-md bg-border/60 motion-safe:animate-pulse ${className}`}
+    />
   );
 }
 
@@ -45,7 +47,7 @@ export function CurrentWeatherSkeleton() {
 
 export function ForecastSkeleton() {
   return (
-    <div aria-hidden="true">
+    <section aria-label="Loading 7-day forecast">
       <Pulse className="mb-3 h-3.5 w-28" />
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 md:grid-cols-7">
         {Array.from({ length: 7 }).map((_, i) => (
@@ -59,16 +61,16 @@ export function ForecastSkeleton() {
           </div>
         ))}
       </div>
-    </div>
+    </section>
   );
 }
 
 export function HourlySkeleton() {
   return (
-    <div aria-hidden="true">
+    <section aria-label="Loading hourly forecast">
       <Pulse className="mb-3 h-3.5 w-24" />
       <div className="flex gap-3 overflow-hidden">
-        {Array.from({ length: 12 }).map((_, i) => (
+        {Array.from({ length: 8 }).map((_, i) => (
           <div
             key={i}
             className="w-24 shrink-0 space-y-2.5 rounded-card border border-border bg-card p-3"
@@ -79,15 +81,15 @@ export function HourlySkeleton() {
           </div>
         ))}
       </div>
-    </div>
+    </section>
   );
 }
 
 export function AiSummarySkeleton() {
   return (
-    <div
+    <section
       aria-label="Loading AI insight"
-      className="space-y-3 rounded-panel border border-accent/20 bg-accent/5 p-5 sm:p-6"
+      className="space-y-3 rounded-panel border border-border bg-surface p-5 shadow-card sm:p-6"
     >
       <div className="flex items-center gap-3">
         <Pulse className="h-9 w-9 rounded-xl" />
@@ -98,6 +100,27 @@ export function AiSummarySkeleton() {
       </div>
       <Pulse className="h-4 w-full" />
       <Pulse className="h-4 w-4/5" />
+    </section>
+  );
+}
+
+interface WeatherLoadingProps {
+  showAi?: boolean;
+}
+
+export function WeatherLoading({ showAi = false }: WeatherLoadingProps) {
+  return (
+    <div
+      role="status"
+      aria-busy="true"
+      aria-live="polite"
+      className="space-y-6 pt-4 sm:space-y-8"
+    >
+      <p className="sr-only">Loading weather</p>
+      <CurrentWeatherSkeleton />
+      {showAi ? <AiSummarySkeleton /> : null}
+      <HourlySkeleton />
+      <ForecastSkeleton />
     </div>
   );
 }
