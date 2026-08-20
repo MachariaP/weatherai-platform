@@ -1,89 +1,30 @@
 /**
- * TypeScript representation of our FastAPI public API contract.
+ * Public API contract aliases sourced from FastAPI OpenAPI.
  *
- * These types mirror what GET /weather returns from OUR backend,
- * NOT the raw WeatherAI upstream response.  The frontend should
- * never model or reference WeatherAI's internal response shape.
+ * Field shapes live in `lib/generated/api-schema.ts` (do not edit that file).
+ * Regenerate with `npm run generate:api-types`.
  *
- * LIMITATION: These types are manually kept in sync with the
- * backend's app/models.py WeatherResponse.  In a production
- * codebase, a schema-generation tool (e.g. openapi-typescript)
- * would automate this alignment.
+ * Frontend-only types (UI state, preferences, recents/favorites, view models)
+ * stay handwritten in their own modules. They are not generated.
  */
 
-export interface CurrentWeather {
-  temperature: number;
-  wind_speed: number;
-  wind_direction: number;
-  weather_code: number;
-  weather_description: string;
-  is_day: boolean;
-  observed_at: string | null;
-  feels_like?: number | null;
-  humidity?: number | null;
-  uv_index?: number | null;
-  pressure?: number | null;
-  precip_last_24h?: number | null;
-}
+import type { components, paths } from "./generated/api-schema";
 
-export interface ForecastDay {
-  date: string;
-  temp_max: number;
-  temp_min: number;
-  /** Precipitation amount (not probability). 0 is verified zero; null is unavailable. */
-  precipitation: number | null;
-  weather_code: number;
-  weather_description: string;
-}
+export type WeatherResponse = components["schemas"]["WeatherResponse"];
+export type CurrentWeather = components["schemas"]["CurrentWeather"];
+export type ForecastDay = components["schemas"]["ForecastDay"];
+export type HourlyForecast = components["schemas"]["HourlyForecast"];
+export type GeocodeResult = components["schemas"]["GeocodeResult"];
+export type GeocodeSearchResponse = components["schemas"]["GeocodeSearchResponse"];
+export type ApiError = components["schemas"]["ApiError"];
 
-export interface HourlyForecast {
-  time: string;
-  temperature: number;
-  /** Precipitation amount (not probability). 0 is verified zero; null is unavailable. */
-  precipitation: number | null;
-  weather_code: number;
-  weather_description: string;
-}
+/** Same public error body FastAPI returns: `{ error, message }`. */
+export type WeatherError = ApiError;
 
-export interface WeatherResponse {
-  lat: number;
-  lon: number;
-  units: string;
-  current: CurrentWeather;
-  daily: ForecastDay[];
-  hourly: HourlyForecast[];
-  ai_summary: string | null;
-  place_name?: string | null;
-}
+/** Place candidate; same public model as reverse/geolocate. */
+export type GeocodeHit = GeocodeResult;
 
-export interface GeocodeHit {
-  lat: number;
-  lon: number;
-  label: string;
-  region?: string;
-  country?: string;
-}
-
-export interface GeocodeSearchResponse {
-  results: GeocodeHit[];
-}
-
-export interface GeocodeResult {
-  lat: number;
-  lon: number;
-  label: string;
-}
-
-export interface WeatherError {
-  error: string;
-  message: string;
-}
-
-export interface WeatherParams {
-  lat: number;
-  lon: number;
-  days?: number;
-  ai?: boolean;
-  units?: "metric" | "imperial";
-  lang?: string;
-}
+/** Query params for FastAPI `GET /weather` (and the Next.js proxy). */
+export type WeatherParams = NonNullable<
+  paths["/weather"]["get"]["parameters"]["query"]
+>;
