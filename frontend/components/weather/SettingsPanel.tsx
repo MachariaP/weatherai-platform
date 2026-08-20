@@ -4,6 +4,29 @@ import { UnitToggle } from "@/components/ui/UnitToggle";
 import { AiToggle } from "@/components/ui/AiToggle";
 import { ForecastDaysToggle } from "@/components/ui/ForecastDaysToggle";
 import { SavedPlacesList } from "@/components/weather/SavedPlacesList";
+import { useLocation } from "@/components/providers/LocationProvider";
+import { useAppView } from "@/components/providers/ViewProvider";
+
+function CompareEntry() {
+  const { favorites } = useLocation();
+  const { setView } = useAppView();
+  if (favorites.length < 2) return null;
+  return (
+    <section aria-label="Compare saved places" className="rounded-card border border-border bg-surface p-5">
+      <h2 className="text-sm font-medium text-text">Compare places</h2>
+      <p className="mt-1 text-xs text-text-muted">
+        Load weather for two saved places only after you choose them. AI is not requested.
+      </p>
+      <button
+        type="button"
+        className="focus-ring mt-3 inline-flex h-10 items-center rounded-control bg-accent px-4 text-sm font-semibold text-on-accent hover:bg-accent-strong"
+        onClick={() => setView("compare")}
+      >
+        Compare saved places
+      </button>
+    </section>
+  );
+}
 
 export function SettingsPanel() {
   return (
@@ -41,6 +64,7 @@ export function SettingsPanel() {
         </div>
       </div>
       <SavedPlacesList />
+      <CompareEntry />
     </section>
   );
 }

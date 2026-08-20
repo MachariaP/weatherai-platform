@@ -2,7 +2,7 @@
 
 import { createContext, useCallback, useContext, useState, type ReactNode } from "react";
 
-export type AppView = "dashboard" | "forecast" | "insights" | "settings";
+export type AppView = "dashboard" | "forecast" | "insights" | "settings" | "compare";
 
 interface ViewContextValue {
   view: AppView;

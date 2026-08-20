@@ -101,6 +101,7 @@ describe("CurrentConditionsView", () => {
 
     expect(screen.getByRole("region", { name: "Loading current weather" })).toBeDefined();
     expect(screen.getByRole("region", { name: "Loading hourly forecast" })).toBeDefined();
+    expect(screen.getByRole("region", { name: "Loading hourly evolution" })).toBeDefined();
     expect(screen.getByRole("region", { name: "Loading 7-day forecast" })).toBeDefined();
     expect(screen.queryByText("Current weather is unavailable")).toBeNull();
     expect(screen.queryByRole("region", { name: "Current weather" })).toBeNull();
@@ -115,6 +116,7 @@ describe("CurrentConditionsView", () => {
     expect(screen.getByText("20°")).toBeDefined();
     expect(screen.getByRole("region", { name: "Current weather" }).textContent).toContain("°C");
     expect(screen.getByText("Hourly forecast is not available.")).toBeDefined();
+    expect(screen.getByText("Hourly evolution is not available.")).toBeDefined();
     expect(screen.getByText("Daily forecast is not available.")).toBeDefined();
   });
 
@@ -217,8 +219,8 @@ describe("CurrentConditionsView", () => {
 
     await waitFor(() => expect(screen.getByRole("region", { name: "Hourly forecast" })).toBeDefined());
     expect(screen.getByRole("region", { name: "7-day forecast" })).toBeDefined();
-    expect(screen.getByText("23°")).toBeDefined();
-    expect(screen.getByText("26°")).toBeDefined();
+    expect(screen.getByRole("region", { name: "Hourly forecast" }).textContent).toContain("23°");
+    expect(screen.getByRole("region", { name: "7-day forecast" }).textContent).toContain("26°");
     expect(screen.getByText("1 mm")).toBeDefined();
     expect(screen.getByText("0 mm")).toBeDefined();
     expect(screen.queryByText("Hourly forecast is not available.")).toBeNull();
@@ -230,6 +232,7 @@ describe("CurrentConditionsView", () => {
     searchNairobi();
     await waitFor(() => expect(screen.getByText("Overcast")).toBeDefined());
     expect(screen.getByText("Hourly forecast is not available.")).toBeDefined();
+    expect(screen.getByText("Hourly evolution is not available.")).toBeDefined();
     expect(screen.getByText("Daily forecast is not available.")).toBeDefined();
   });
 
