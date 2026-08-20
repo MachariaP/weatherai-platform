@@ -9,6 +9,7 @@ import { EmptyState } from "./EmptyState";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { WeatherLoading } from "@/components/ui/LoadingSkeleton";
 import { CurrentWeather } from "./CurrentWeather";
+import { ObservedRefresh } from "./ObservedRefresh";
 import { AISummary } from "./AISummary";
 import { HourlyScroll } from "./HourlyScroll";
 import { ForecastGrid } from "./ForecastGrid";
@@ -21,7 +22,7 @@ export function CurrentConditionsView() {
   const { location } = useLocation();
   const { units, aiEnabled } = usePreferences();
   const { view } = useAppView();
-  const { data, error, cacheStatus, refetch } = useWeather(
+  const { data, error, cacheStatus, refetch, isRefreshing } = useWeather(
     location?.lat ?? null,
     location?.lon ?? null,
     units,
@@ -64,6 +65,13 @@ export function CurrentConditionsView() {
   const heading =
     data.place_name?.trim() || location.label || "Unknown location";
   const coordsLabel = formatLatLon(data.lat, data.lon);
+  const refreshBar = (
+    <ObservedRefresh
+      observedAt={data.current.observed_at}
+      onRefresh={refetch}
+      refreshing={isRefreshing}
+    />
+  );
 
   const hero = (
     <CurrentWeather
@@ -80,6 +88,7 @@ export function CurrentConditionsView() {
     return (
       <div className="space-y-6 pt-2">
         {error ? <ErrorBanner error={error} onRetry={refetch} /> : null}
+        {refreshBar}
         {coordsLabel ? (
           <p className="text-sm text-text-muted">{coordsLabel}</p>
         ) : null}
@@ -92,6 +101,7 @@ export function CurrentConditionsView() {
     return (
       <div className="mx-auto max-w-2xl space-y-6 pt-2">
         {error ? <ErrorBanner error={error} onRetry={refetch} /> : null}
+        {refreshBar}
         {aiEnabled ? (
           <AISummary enabled summary={data.ai_summary} error={error} />
         ) : (
@@ -109,6 +119,7 @@ export function CurrentConditionsView() {
   return (
     <div className="space-y-6 pt-2 sm:space-y-8">
       {error ? <ErrorBanner error={error} onRetry={refetch} /> : null}
+      {refreshBar}
 
       <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-12">
         <div className="flex flex-col gap-8 lg:col-span-8">
