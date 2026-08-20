@@ -38,16 +38,17 @@ export function CurrentWeatherSkeleton() {
   );
 }
 
-export function ForecastSkeleton() {
+export function ForecastSkeleton({ days = 7 }: { days?: number }) {
+  const count = days === 3 || days === 5 ? days : 7;
   return (
-    <section aria-label="Loading 7-day forecast">
+    <section aria-label={`Loading ${count}-day forecast`}>
       <Pulse className="mb-3 h-3.5 w-28" />
       <div className="overflow-hidden rounded-card border border-border bg-surface">
-        {Array.from({ length: 7 }).map((_, i) => (
+        {Array.from({ length: count }).map((_, i) => (
           <div
             key={i}
             className={`flex items-center gap-3 px-4 py-3 ${
-              i < 6 ? "border-b border-border" : ""
+              i < count - 1 ? "border-b border-border" : ""
             }`}
           >
             <Pulse className="h-4 w-16" />
@@ -98,9 +99,10 @@ export function AiSummarySkeleton() {
 
 interface WeatherLoadingProps {
   showAi?: boolean;
+  forecastDays?: number;
 }
 
-export function WeatherLoading({ showAi = false }: WeatherLoadingProps) {
+export function WeatherLoading({ showAi = false, forecastDays = 7 }: WeatherLoadingProps) {
   return (
     <div
       role="status"
@@ -116,7 +118,7 @@ export function WeatherLoading({ showAi = false }: WeatherLoadingProps) {
         </div>
         <div className="space-y-8 lg:col-span-4">
           {showAi ? <AiSummarySkeleton /> : null}
-          <ForecastSkeleton />
+          <ForecastSkeleton days={forecastDays} />
         </div>
       </div>
     </div>

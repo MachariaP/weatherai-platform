@@ -34,7 +34,7 @@ function parseError(status: number, body: unknown): WeatherError {
  * Does not call WeatherAI, does not cache, and does not normalize.
  * FastAPI owns those concerns behind the Phase 3 boundary.
  *
- * Location / units / AI changes clear previous weather (no mixed payloads).
+ * Location / units / AI / days changes clear previous weather (no mixed payloads).
  * Manual refetch keeps the last valid payload visible and does not bypass
  * the FastAPI TTL cache.
  */
@@ -42,7 +42,8 @@ export function useWeather(
   lat: number | null,
   lon: number | null,
   units: "metric" | "imperial" = "metric",
-  ai: boolean = false
+  ai: boolean = false,
+  days: number = 7
 ): UseWeatherResult {
   const hasLocation = lat !== null && lon !== null;
   const [data, setData] = useState<WeatherResponse | null>(null);
@@ -81,7 +82,7 @@ export function useWeather(
     let cancelled = false;
 
     const nextLocationKey = `${lat},${lon}`;
-    const nextPrefsKey = `${units}:${ai}`;
+    const nextPrefsKey = `${units}:${ai}:${days}`;
     const locationChanged = locationKeyRef.current !== nextLocationKey;
     const prefsChanged =
       prefsKeyRef.current !== null && prefsKeyRef.current !== nextPrefsKey;
@@ -95,6 +96,7 @@ export function useWeather(
       lat: String(lat),
       lon: String(lon),
       units,
+      days: String(days),
     });
     if (ai) params.set("ai", "true");
 
@@ -181,7 +183,7 @@ export function useWeather(
       cancelled = true;
       controller.abort();
     };
-  }, [lat, lon, units, ai, tick]);
+  }, [lat, lon, units, ai, days, tick]);
 
   // Location can flip from null → set on the same hook instance. Until the
   // effect starts, treat that as loading so the UI does not flash a
