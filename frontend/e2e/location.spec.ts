@@ -4,6 +4,8 @@ import {
   COORD_WEATHER,
   GEOCODE_NAIROBI,
   ILLINOIS_WEATHER,
+  LONDON,
+  LONDON_WEATHER,
   NAIROBI_IL,
   NAIROBI_KE,
   NAIROBI_WEATHER,
@@ -212,5 +214,51 @@ test.describe("location discovery", () => {
     expect(
       api.weatherRequests.filter((req) => req.url().includes("lat=-1.2864")).length
     ).toBeGreaterThanOrEqual(2);
+  });
+
+  test("saved places restore coordinates without geocoding", async ({ page }) => {
+    const api = await installApiMock(page);
+    api.setGeocode(async (route, request) => {
+      const q = new URL(request.url()).searchParams.get("q") ?? "";
+      const body = q.toLowerCase().includes("london")
+        ? { results: [LONDON] }
+        : GEOCODE_NAIROBI;
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(body),
+      });
+    });
+    api.weatherByLat({
+      [NAIROBI_KE.lat.toFixed(4)]: NAIROBI_WEATHER,
+      [LONDON.lat.toFixed(4)]: LONDON_WEATHER,
+    });
+    await openHome(page);
+
+    await typePlace(page, "Nairobi");
+    await waitForSuggestion(page, /Nairobi, Kenya/);
+    await page.getByRole("option", { name: /Nairobi, Kenya/ }).click();
+    await expect(page.getByText("Overcast")).toBeVisible();
+    await page.getByRole("button", { name: "Save this place" }).click();
+    await expect(page.getByRole("button", { name: "Remove from saved places" })).toBeVisible();
+
+    await typePlace(page, "London");
+    await waitForSuggestion(page, /London, United Kingdom/);
+    await page.getByRole("option", { name: /London, United Kingdom/ }).click();
+    await expect(page.getByText("Drizzle")).toBeVisible();
+
+    const geocodeCount = api.geocodeRequests.length;
+    await searchBox(page).fill("");
+    await searchBox(page).focus();
+    await expect(page.getByText("Saved")).toBeVisible();
+    await page.getByRole("option", { name: /Nairobi, Kenya/ }).click();
+    await expect(page.getByText("Overcast")).toBeVisible();
+    await expect(page).toHaveURL(/lat=-1\.2864/);
+    expect(api.geocodeRequests.length).toBe(geocodeCount);
+
+    await page.reload();
+    await searchBox(page).fill("");
+    await searchBox(page).focus();
+    await expect(page.getByRole("option", { name: /Nairobi, Kenya/ })).toBeVisible();
   });
 });

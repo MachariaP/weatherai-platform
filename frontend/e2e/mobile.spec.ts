@@ -31,5 +31,12 @@ test.describe("mobile smoke", () => {
       return root.scrollWidth - window.innerWidth;
     });
     expect(overflow).toBeLessThanOrEqual(2);
+
+    await expect(page.getByRole("button", { name: "Save this place" })).toBeVisible();
+    const saveBox = await page.getByRole("button", { name: "Save this place" }).boundingBox();
+    expect(saveBox?.height ?? 0).toBeGreaterThanOrEqual(40);
+    await expect(page.getByRole("group", { name: "Forecast range" })).toBeVisible();
+    const threeDays = await page.getByRole("button", { name: "3 days" }).boundingBox();
+    expect(threeDays?.height ?? 0).toBeGreaterThanOrEqual(40);
   });
 });

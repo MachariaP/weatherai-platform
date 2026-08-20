@@ -308,4 +308,45 @@ test.describe("weather preferences and refresh", () => {
     await expect(page.getByText(/too long/i)).toBeVisible();
     await expect(page.getByText("Backend did not respond in time")).toHaveCount(0);
   });
+
+  test("switching forecast range requests days=3 and renders returned days", async ({ page }) => {
+    const api = await installApiMock(page);
+    api.setWeather(async (route, request) => {
+      const days = Number(new URL(request.url()).searchParams.get("days") ?? "7");
+      const count = days === 3 ? 3 : 7;
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        headers: { "x-cache": "MISS" },
+        body: JSON.stringify({
+          ...NAIROBI_WEATHER,
+          daily: Array.from({ length: count }, (_, i) => ({
+            date: `2026-08-${String(21 + i).padStart(2, "0")}`,
+            temp_max: 24,
+            temp_min: 14,
+            precipitation: 0,
+            weather_code: 1,
+            weather_description: `Range day ${i + 1}`,
+          })),
+        }),
+      });
+    });
+    await openHome(page, `/?lat=${NAIROBI_KE.lat}&lon=${NAIROBI_KE.lon}`);
+    await expectDashboard(page);
+    await expect(page.getByRole("region", { name: "7-day forecast" })).toBeVisible();
+    await expect(
+      page.getByRole("region", { name: "7-day forecast" }).getByRole("listitem")
+    ).toHaveCount(7);
+    expect(api.weatherRequests[0].url()).toContain("days=7");
+
+    await page.getByRole("button", { name: "3 days" }).click();
+    await expect(page.getByRole("region", { name: "3-day forecast" })).toBeVisible();
+    await expect(
+      page.getByRole("region", { name: "3-day forecast" }).getByRole("listitem")
+    ).toHaveCount(3);
+    await expect(page.getByRole("heading", { name: "Nairobi, Kenya" })).toBeVisible();
+    expect(api.weatherRequests.some((req) => req.url().includes("days=3"))).toBe(true);
+    expect(api.weatherRequests.at(-1)?.url()).toContain("units=metric");
+    expect(api.weatherRequests.at(-1)?.url()).not.toContain("ai=true");
+  });
 });

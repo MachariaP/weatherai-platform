@@ -23,5 +23,7 @@ test.describe("initial application state", () => {
       "aria-checked",
       "false"
     );
+    await expect(page.getByRole("group", { name: "Forecast range" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "7 days" })).toHaveAttribute("aria-pressed", "true");
   });
 });
