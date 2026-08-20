@@ -284,7 +284,7 @@ export interface operations {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
-            /** @description Location service unavailable */
+            /** @description Upstream or location service unavailable */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -331,7 +331,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiError"];
                 };
             };
-            /** @description Location service unavailable */
+            /** @description Upstream or location service unavailable */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -469,6 +469,8 @@ export interface operations {
             /** @description Rate limit */
             429: {
                 headers: {
+                    /** @description Seconds to wait after an application-level rate limit */
+                    "Retry-After"?: string;
                     /** @description Unix epoch when the upstream quota resets, if known */
                     "X-RateLimit-Reset"?: string;
                     [name: string]: unknown;
@@ -479,6 +481,15 @@ export interface operations {
             };
             /** @description Upstream or processing error */
             502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Upstream or location service unavailable */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };
