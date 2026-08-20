@@ -8,7 +8,7 @@ Error translation maps typed exceptions to HTTP responses.
 from __future__ import annotations
 
 import logging
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Query
 from fastapi.responses import JSONResponse
@@ -28,7 +28,11 @@ from app.errors import (
     WeatherAIUnavailableError,
 )
 from app.geocode import reverse_place
-from app.models import UpstreamWeatherResponse
+from app.models import (
+    UpstreamWeatherResponse,
+    WeatherResponse,
+    api_error_responses,
+)
 from app.normalize import normalize_weather
 from app.retry import with_retry
 
@@ -39,13 +43,33 @@ router = APIRouter()
 _cache = InMemoryCache()
 
 
-@router.get("/weather")
+@router.get(
+    "/weather",
+    response_model=WeatherResponse,
+    response_class=JSONResponse,
+    responses=api_error_responses(400, 403, 429, 502, 504),
+    openapi_extra={
+        "responses": {
+            "200": {
+                "headers": {
+                    "X-Cache": {
+                        "description": (
+                            "HIT when served from the FastAPI weather cache, "
+                            "otherwise MISS"
+                        ),
+                        "schema": {"type": "string", "enum": ["HIT", "MISS"]},
+                    }
+                }
+            }
+        }
+    },
+)
 async def get_weather(
     lat: Annotated[float, Query(ge=-90, le=90)],
     lon: Annotated[float, Query(ge=-180, le=180)],
     days: Annotated[int, Query(ge=1, le=7)] = 7,
     ai: bool = False,
-    units: Annotated[str, Query(pattern="^(metric|imperial)$")] = "metric",
+    units: Annotated[Literal["metric", "imperial"], Query()] = "metric",
     lang: str = "en",
 ) -> JSONResponse:
     cache_key = make_cache_key(

@@ -9,6 +9,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
+from app.models import HealthResponse
 from app.routes.geocode import router as geocode_router
 from app.routes.weather import router as weather_router
 
@@ -31,8 +32,8 @@ app.include_router(weather_router)
 app.include_router(geocode_router)
 
 
-@app.get("/health")
-def health() -> dict:
+@app.get("/health", response_model=HealthResponse)
+def health() -> HealthResponse:
     """
     Liveness check for this service only.
 
@@ -40,4 +41,4 @@ def health() -> dict:
     this endpoint answers "is our process up", not "is WeatherAI up".
     Those are different questions and get different checks.
     """
-    return {"status": "ok", "service": "weatherai-qa-backend"}
+    return HealthResponse(status="ok", service="weatherai-qa-backend")

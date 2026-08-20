@@ -22,7 +22,7 @@ Two layers, deliberately separated:
 """
 from __future__ import annotations
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 # ---------------------------------------------------------------------------
@@ -126,6 +126,12 @@ WEATHERCODE_DESCRIPTIONS: dict[int, str] = {
 }
 
 
+_PRECIPITATION_DESCRIPTION = (
+    "Amount in the response units (mm metric, in imperial), not probability. "
+    "0 is verified zero; null is unavailable."
+)
+
+
 class CurrentWeather(BaseModel):
     temperature: float
     wind_speed: float
@@ -145,8 +151,7 @@ class ForecastDay(BaseModel):
     date: str
     temp_max: float
     temp_min: float
-    # Amount (not probability). 0.0 is verified zero; null is unavailable.
-    precipitation: float | None = None
+    precipitation: float | None = Field(description=_PRECIPITATION_DESCRIPTION)
     weather_code: int
     weather_description: str
 
@@ -154,8 +159,7 @@ class ForecastDay(BaseModel):
 class HourlyForecast(BaseModel):
     time: str
     temperature: float
-    # Amount (not probability). 0.0 is verified zero; null is unavailable.
-    precipitation: float | None = None
+    precipitation: float | None = Field(description=_PRECIPITATION_DESCRIPTION)
     weather_code: int
     weather_description: str
 
@@ -168,7 +172,7 @@ class WeatherResponse(BaseModel):
     current: CurrentWeather
     daily: list[ForecastDay]
     hourly: list[HourlyForecast]
-    ai_summary: str | None = None
+    ai_summary: str | None
     place_name: str | None = None
 
 
@@ -184,3 +188,45 @@ class GeocodeResult(BaseModel):
 
 class GeocodeSearchResponse(BaseModel):
     results: list[GeocodeResult]
+
+
+class ApiError(BaseModel):
+    """Public error body used by FastAPI JSON error responses."""
+
+    error: str
+    message: str
+
+
+class HealthResponse(BaseModel):
+    status: str
+    service: str
+
+
+_API_ERROR_DESCRIPTIONS: dict[int, str] = {
+    400: "Bad request",
+    403: "Plan restriction",
+    404: "Not found",
+    429: "Rate limit",
+    502: "Upstream or processing error",
+    503: "Location service unavailable",
+    504: "Upstream timeout",
+}
+
+
+def api_error_responses(*status_codes: int) -> dict[int, dict]:
+    """OpenAPI metadata for the existing {error, message} JSON bodies."""
+    responses: dict[int, dict] = {}
+    for code in status_codes:
+        entry: dict = {
+            "model": ApiError,
+            "description": _API_ERROR_DESCRIPTIONS[code],
+        }
+        if code == 429:
+            entry["headers"] = {
+                "X-RateLimit-Reset": {
+                    "description": "Unix epoch when the upstream quota resets, if known",
+                    "schema": {"type": "string"},
+                }
+            }
+        responses[code] = entry
+    return responses

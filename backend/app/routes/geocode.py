@@ -15,12 +15,17 @@ from app.geocode import (
     reverse_place,
     search_places,
 )
-from app.models import GeocodeSearchResponse
+from app.models import GeocodeResult, GeocodeSearchResponse, api_error_responses
 
 router = APIRouter()
 
 
-@router.get("/geocode")
+@router.get(
+    "/geocode",
+    response_model=GeocodeSearchResponse,
+    response_class=JSONResponse,
+    responses=api_error_responses(400, 503, 504),
+)
 async def geocode(q: Annotated[str, Query(min_length=2, max_length=200)]) -> JSONResponse:
     try:
         results = await search_places(q)
@@ -43,7 +48,12 @@ async def geocode(q: Annotated[str, Query(min_length=2, max_length=200)]) -> JSO
     return JSONResponse(content=payload.model_dump(exclude_none=True))
 
 
-@router.get("/reverse")
+@router.get(
+    "/reverse",
+    response_model=GeocodeResult,
+    response_class=JSONResponse,
+    responses=api_error_responses(404),
+)
 async def reverse(
     lat: Annotated[float, Query(ge=-90, le=90)],
     lon: Annotated[float, Query(ge=-180, le=180)],
@@ -54,7 +64,8 @@ async def reverse(
             status_code=404,
             content={"error": "not_found", "message": "No place name for these coordinates"},
         )
-    return JSONResponse(content={"lat": lat, "lon": lon, "label": label})
+    payload = GeocodeResult(lat=lat, lon=lon, label=label)
+    return JSONResponse(content=payload.model_dump(exclude_none=True))
 
 
 def _request_ip(request: Request) -> str | None:
@@ -66,7 +77,12 @@ def _request_ip(request: Request) -> str | None:
     return None
 
 
-@router.get("/geolocate")
+@router.get(
+    "/geolocate",
+    response_model=GeocodeResult,
+    response_class=JSONResponse,
+    responses=api_error_responses(404, 503, 504),
+)
 async def geolocate(request: Request) -> JSONResponse:
     try:
         result = await locate_by_ip(_request_ip(request))
@@ -85,4 +101,5 @@ async def geolocate(request: Request) -> JSONResponse:
             status_code=503,
             content={"error": "geocode_unavailable", "message": "Location search is unavailable"},
         )
-    return JSONResponse(content=result)
+    payload = GeocodeResult.model_validate(result)
+    return JSONResponse(content=payload.model_dump(exclude_none=True))
