@@ -33,6 +33,15 @@ interface DetailProps {
   sub?: string;
 }
 
+function isFiniteNumber(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value);
+}
+
+function formatTemperature(value: unknown): string {
+  if (!isFiniteNumber(value)) return "Unavailable";
+  return String(Math.round(value));
+}
+
 function Detail({ icon, label, value, sub }: DetailProps) {
   return (
     <div className="flex items-start gap-3 rounded-xl border border-border bg-surface/70 p-3.5">
@@ -44,17 +53,36 @@ function Detail({ icon, label, value, sub }: DetailProps) {
           {label}
         </dt>
         <dd className="truncate text-sm font-semibold text-text">{value}</dd>
-        {sub && <dd className="text-xs text-text-muted">{sub}</dd>}
+        {sub ? <dd className="text-xs text-text-muted">{sub}</dd> : null}
       </div>
     </div>
   );
 }
 
+/**
+ * Current conditions from the FastAPI public contract only.
+ *
+ * CurrentWeather has temperature, wind, direction, weather code/description,
+ * is_day, and observed_at. It does not include feels-like, humidity, or
+ * current precipitation — those are not rendered or invented here.
+ */
 export function CurrentWeather({ data, units, location, cacheStatus }: Props) {
-  const iconName = getWeatherIconName(data.weather_code, data.is_day);
-  const updatedTime = formatTime(data.observed_at);
-  const updatedDate = formatDate(data.observed_at);
+  const isDay = data.is_day === true;
+  const iconName = getWeatherIconName(
+    isFiniteNumber(data.weather_code) ? data.weather_code : -1,
+    isDay
+  );
+  const updatedTime = formatTime(data.observed_at ?? null);
+  const updatedDate = formatDate(data.observed_at ?? null);
   const isCached = cacheStatus === "HIT";
+  const description = data.weather_description?.trim() || "Conditions unavailable";
+  const temperature = formatTemperature(data.temperature);
+  const hasTemp = temperature !== "Unavailable";
+  const windValue = isFiniteNumber(data.wind_speed)
+    ? formatWind(data.wind_speed, units)
+    : "Unavailable";
+  const hasDirection = isFiniteNumber(data.wind_direction);
+  const compass = hasDirection ? formatWindDirection(data.wind_direction) : "Unavailable";
 
   return (
     <section
@@ -69,10 +97,10 @@ export function CurrentWeather({ data, units, location, cacheStatus }: Props) {
             </p>
             <h2 className="mt-1 flex items-center gap-1.5 text-lg font-semibold text-text">
               <MapPinIcon className="h-4 w-4 shrink-0 text-text-muted" />
-              <span className="truncate">{location}</span>
+              <span className="truncate">{location || "Unknown location"}</span>
             </h2>
           </div>
-          {cacheStatus && (
+          {cacheStatus ? (
             <span
               className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium ${
                 isCached
@@ -87,7 +115,7 @@ export function CurrentWeather({ data, units, location, cacheStatus }: Props) {
               )}
               {isCached ? "Cached" : "Live"}
             </span>
-          )}
+          ) : null}
         </header>
 
         <div className="flex flex-col gap-8 lg:flex-row lg:items-center lg:justify-between">
@@ -100,16 +128,18 @@ export function CurrentWeather({ data, units, location, cacheStatus }: Props) {
             </div>
             <div>
               <p className="text-6xl font-extralight leading-none tabular-nums text-text sm:text-7xl">
-                {Math.round(data.temperature)}
-                <span className="text-3xl font-light text-text-secondary sm:text-4xl">
-                  {units === "metric" ? "°C" : "°F"}
-                </span>
+                {temperature}
+                {hasTemp ? (
+                  <span className="text-3xl font-light text-text-secondary sm:text-4xl">
+                    {units === "metric" ? "°C" : "°F"}
+                  </span>
+                ) : null}
               </p>
               <p className="mt-2 text-base font-medium capitalize text-text-secondary sm:text-lg">
-                {data.weather_description}
+                {description}
               </p>
               <p className="mt-0.5 text-xs text-text-muted">
-                {data.is_day ? "Daytime" : "Night"}
+                {isDay ? "Daytime" : "Night"}
               </p>
             </div>
           </div>
@@ -118,24 +148,24 @@ export function CurrentWeather({ data, units, location, cacheStatus }: Props) {
             <Detail
               icon={<WindIcon className="h-4 w-4" />}
               label="Wind"
-              value={formatWind(data.wind_speed, units)}
-              sub={`From ${formatWindDirection(data.wind_direction)}`}
+              value={windValue}
+              sub={hasDirection ? `From ${compass}` : undefined}
             />
             <Detail
               icon={<CompassIcon className="h-4 w-4" />}
               label="Direction"
-              value={formatWindDirection(data.wind_direction)}
-              sub={`${Math.round(data.wind_direction)}°`}
+              value={compass}
+              sub={hasDirection ? `${Math.round(data.wind_direction)}°` : undefined}
             />
             <Detail
-              icon={data.is_day ? <SunIcon className="h-4 w-4" /> : <MoonIcon className="h-4 w-4" />}
+              icon={isDay ? <SunIcon className="h-4 w-4" /> : <MoonIcon className="h-4 w-4" />}
               label="Conditions"
-              value={data.is_day ? "Day" : "Night"}
+              value={isDay ? "Day" : "Night"}
             />
             <Detail
               icon={<ClockIcon className="h-4 w-4" />}
               label="Updated"
-              value={updatedTime ?? "—"}
+              value={updatedTime ?? "Unavailable"}
               sub={updatedDate ?? undefined}
             />
           </dl>
