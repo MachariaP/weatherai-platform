@@ -7,6 +7,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { formatCoordinates } from "@/lib/format";
 
 interface Location {
   lat: number;
@@ -38,10 +39,12 @@ export function LocationProvider({ children }: { children: ReactNode }) {
     setError(null);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
+        const lat = Number(pos.coords.latitude.toFixed(4));
+        const lon = Number(pos.coords.longitude.toFixed(4));
         setLocation({
-          lat: Number(pos.coords.latitude.toFixed(4)),
-          lon: Number(pos.coords.longitude.toFixed(4)),
-          label: `${pos.coords.latitude.toFixed(2)}°, ${pos.coords.longitude.toFixed(2)}°`,
+          lat,
+          lon,
+          label: formatCoordinates(lat, lon),
         });
         setDetecting(false);
       },

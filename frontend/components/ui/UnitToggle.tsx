@@ -6,24 +6,26 @@ export function UnitToggle() {
   const { units, setUnits } = usePreferences();
 
   return (
-    <div className="flex rounded-lg border border-[var(--card-border)] overflow-hidden">
+    <div
+      role="group"
+      aria-label="Temperature units"
+      className="flex items-center rounded-xl border border-border bg-surface p-1 shadow-card"
+    >
       <button
+        type="button"
+        aria-pressed={units === "metric"}
         onClick={() => setUnits("metric")}
-        className={`px-3 py-1.5 text-sm font-medium transition-colors ${
-          units === "metric"
-            ? "bg-[var(--accent)] text-[var(--background)]"
-            : "text-[var(--muted)] hover:text-[var(--foreground)]"
-        }`}
+        title="Celsius"
+        className="focus-ring rounded-lg px-2.5 py-1.5 text-sm font-semibold text-text-muted transition-colors hover:text-text aria-pressed:bg-accent aria-pressed:text-bg"
       >
         °C
       </button>
       <button
+        type="button"
+        aria-pressed={units === "imperial"}
         onClick={() => setUnits("imperial")}
-        className={`px-3 py-1.5 text-sm font-medium transition-colors ${
-          units === "imperial"
-            ? "bg-[var(--accent)] text-[var(--background)]"
-            : "text-[var(--muted)] hover:text-[var(--foreground)]"
-        }`}
+        title="Fahrenheit"
+        className="focus-ring rounded-lg px-2.5 py-1.5 text-sm font-semibold text-text-muted transition-colors hover:text-text aria-pressed:bg-accent aria-pressed:text-bg"
       >
         °F
       </button>
