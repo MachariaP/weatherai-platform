@@ -16,6 +16,21 @@ import { fetchWeather } from "@/lib/api-client";
 
 const VALID_UNITS = new Set(["metric", "imperial"]);
 
+export const dynamic = "force-dynamic";
+
+const NO_STORE = { "Cache-Control": "no-store" };
+
+function jsonResponse(body: unknown, status: number, extraHeaders?: Record<string, string>) {
+  return NextResponse.json(body, {
+    status,
+    headers: { ...NO_STORE, ...extraHeaders },
+  });
+}
+
+function badRequest(message: string) {
+  return jsonResponse({ error: "bad_request", message }, 400);
+}
+
 export async function GET(request: NextRequest) {
   const sp = request.nextUrl.searchParams;
 
@@ -23,27 +38,18 @@ export async function GET(request: NextRequest) {
   const lonStr = sp.get("lon");
 
   if (!latStr || !lonStr) {
-    return NextResponse.json(
-      { error: "bad_request", message: "lat and lon are required" },
-      { status: 400 }
-    );
+    return badRequest("lat and lon are required");
   }
 
   const lat = Number(latStr);
   const lon = Number(lonStr);
 
   if (Number.isNaN(lat) || lat < -90 || lat > 90) {
-    return NextResponse.json(
-      { error: "bad_request", message: "lat must be a number between -90 and 90" },
-      { status: 400 }
-    );
+    return badRequest("lat must be a number between -90 and 90");
   }
 
   if (Number.isNaN(lon) || lon < -180 || lon > 180) {
-    return NextResponse.json(
-      { error: "bad_request", message: "lon must be a number between -180 and 180" },
-      { status: 400 }
-    );
+    return badRequest("lon must be a number between -180 and 180");
   }
 
   const daysStr = sp.get("days");
@@ -51,43 +57,50 @@ export async function GET(request: NextRequest) {
   if (daysStr !== null) {
     days = Number(daysStr);
     if (!Number.isInteger(days) || days < 1 || days > 7) {
-      return NextResponse.json(
-        { error: "bad_request", message: "days must be an integer between 1 and 7" },
-        { status: 400 }
-      );
+      return badRequest("days must be an integer between 1 and 7");
     }
   }
 
   const units = sp.get("units") ?? undefined;
   if (units !== undefined && !VALID_UNITS.has(units)) {
-    return NextResponse.json(
-      { error: "bad_request", message: "units must be 'metric' or 'imperial'" },
-      { status: 400 }
-    );
+    return badRequest("units must be 'metric' or 'imperial'");
   }
 
   const aiStr = sp.get("ai");
-  const ai = aiStr === "true" ? true : aiStr === "false" ? false : undefined;
+  let ai: boolean | undefined;
+  if (aiStr !== null) {
+    if (aiStr !== "true" && aiStr !== "false") {
+      return badRequest("ai must be 'true' or 'false'");
+    }
+    ai = aiStr === "true";
+  }
 
   const lang = sp.get("lang") ?? undefined;
 
-  const result = await fetchWeather({
-    lat,
-    lon,
-    days,
-    ai,
-    units: units as "metric" | "imperial" | undefined,
-    lang,
-  });
+  try {
+    const result = await fetchWeather({
+      lat,
+      lon,
+      days,
+      ai,
+      units: units as "metric" | "imperial" | undefined,
+      lang,
+    });
 
-  if (!result.ok) {
-    return NextResponse.json(result.error, { status: result.status });
+    if (!result.ok) {
+      return jsonResponse(result.error, result.status);
+    }
+
+    const extra: Record<string, string> = {};
+    if (result.cacheStatus) {
+      extra["X-Cache"] = result.cacheStatus;
+    }
+
+    return jsonResponse(result.data, 200, extra);
+  } catch {
+    return jsonResponse(
+      { error: "backend_unavailable", message: "Backend is unreachable" },
+      503
+    );
   }
-
-  const headers: Record<string, string> = {};
-  if (result.cacheStatus) {
-    headers["X-Cache"] = result.cacheStatus;
-  }
-
-  return NextResponse.json(result.data, { status: 200, headers });
 }
