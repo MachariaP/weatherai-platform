@@ -55,11 +55,21 @@ describe("GET /api/weather", () => {
     expect(res.status).toBe(400);
     const body = await res.json();
     expect(body.error).toBe("bad_request");
+    expect(mockFetchWeather).not.toHaveBeenCalled();
   });
 
   it("returns 400 when lon is missing", async () => {
     const res = await GET(makeRequest({ lat: "-1" }));
     expect(res.status).toBe(400);
+    expect(mockFetchWeather).not.toHaveBeenCalled();
+  });
+
+  it("returns 400 when both coordinates are missing", async () => {
+    const res = await GET(makeRequest({}));
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toBe("bad_request");
+    expect(mockFetchWeather).not.toHaveBeenCalled();
   });
 
   it("returns 400 for lat out of range", async () => {
@@ -67,26 +77,40 @@ describe("GET /api/weather", () => {
     expect(res.status).toBe(400);
     const body = await res.json();
     expect(body.message).toContain("lat");
+    expect(mockFetchWeather).not.toHaveBeenCalled();
   });
 
   it("returns 400 for lon out of range", async () => {
     const res = await GET(makeRequest({ lat: "0", lon: "181" }));
     expect(res.status).toBe(400);
+    expect(mockFetchWeather).not.toHaveBeenCalled();
   });
 
   it("returns 400 for non-numeric lat", async () => {
     const res = await GET(makeRequest({ lat: "abc", lon: "0" }));
     expect(res.status).toBe(400);
+    expect(mockFetchWeather).not.toHaveBeenCalled();
   });
 
   it("returns 400 for invalid days", async () => {
     const res = await GET(makeRequest({ lat: "0", lon: "0", days: "0" }));
     expect(res.status).toBe(400);
+    expect(mockFetchWeather).not.toHaveBeenCalled();
   });
 
   it("returns 400 for invalid units", async () => {
     const res = await GET(makeRequest({ lat: "0", lon: "0", units: "kelvin" }));
     expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toBe("bad_request");
+    expect(body.message).toContain("units");
+    expect(mockFetchWeather).not.toHaveBeenCalled();
+  });
+
+  it("returns 400 for invalid ai", async () => {
+    const res = await GET(makeRequest({ lat: "0", lon: "0", ai: "yes" }));
+    expect(res.status).toBe(400);
+    expect(mockFetchWeather).not.toHaveBeenCalled();
   });
 
   // ---- Successful request ----
@@ -102,6 +126,7 @@ describe("GET /api/weather", () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.lat).toBe(-1.29);
+    expect(body.current.temperature).toBe(22.5);
   });
 
   it("forwards X-Cache header from backend", async () => {
@@ -113,6 +138,23 @@ describe("GET /api/weather", () => {
 
     const res = await GET(makeRequest({ lat: "0", lon: "0" }));
     expect(res.headers.get("X-Cache")).toBe("HIT");
+  });
+
+  it("sets Cache-Control: no-store so Next.js does not cache weather", async () => {
+    mockFetchWeather.mockResolvedValue({
+      ok: true,
+      data: MOCK_WEATHER,
+      cacheStatus: "MISS",
+    });
+
+    const res = await GET(makeRequest({ lat: "0", lon: "0" }));
+    expect(res.headers.get("Cache-Control")).toBe("no-store");
+  });
+
+  it("sets Cache-Control: no-store on validation errors", async () => {
+    const res = await GET(makeRequest({ lat: "abc", lon: "0" }));
+    expect(res.status).toBe(400);
+    expect(res.headers.get("Cache-Control")).toBe("no-store");
   });
 
   // ---- Parameter forwarding ----
@@ -145,30 +187,58 @@ describe("GET /api/weather", () => {
     });
   });
 
-  // ---- Error propagation ----
+  // ---- Error propagation (actual FastAPI public contract) ----
 
-  it("propagates 401 from backend", async () => {
+  it("propagates 403 plan_restriction from backend", async () => {
     mockFetchWeather.mockResolvedValue({
       ok: false,
-      status: 401,
-      error: { error: "auth_error", message: "Invalid API key" },
+      status: 403,
+      error: { error: "plan_restriction", message: "Feature not available on this plan" },
     });
 
     const res = await GET(makeRequest({ lat: "0", lon: "0" }));
-    expect(res.status).toBe(401);
+    expect(res.status).toBe(403);
     const body = await res.json();
-    expect(body.error).toBe("auth_error");
+    expect(body.error).toBe("plan_restriction");
   });
 
-  it("propagates 429 from backend", async () => {
+  it("propagates 429 rate_limit from backend", async () => {
     mockFetchWeather.mockResolvedValue({
       ok: false,
       status: 429,
-      error: { error: "rate_limited", message: "Too many requests" },
+      error: { error: "rate_limit", message: "API quota exhausted" },
     });
 
     const res = await GET(makeRequest({ lat: "0", lon: "0" }));
     expect(res.status).toBe(429);
+    const body = await res.json();
+    expect(body.error).toBe("rate_limit");
+  });
+
+  it("propagates 502 upstream_auth (backend never returns 401 to the browser)", async () => {
+    mockFetchWeather.mockResolvedValue({
+      ok: false,
+      status: 502,
+      error: { error: "upstream_auth", message: "Service configuration error" },
+    });
+
+    const res = await GET(makeRequest({ lat: "0", lon: "0" }));
+    expect(res.status).toBe(502);
+    const body = await res.json();
+    expect(body.error).toBe("upstream_auth");
+  });
+
+  it("propagates 502 upstream_error from backend", async () => {
+    mockFetchWeather.mockResolvedValue({
+      ok: false,
+      status: 502,
+      error: { error: "upstream_error", message: "Weather service temporarily unavailable" },
+    });
+
+    const res = await GET(makeRequest({ lat: "0", lon: "0" }));
+    expect(res.status).toBe(502);
+    const body = await res.json();
+    expect(body.error).toBe("upstream_error");
   });
 
   it("propagates 503 (backend unavailable)", async () => {
@@ -201,6 +271,20 @@ describe("GET /api/weather", () => {
     expect(res.status).toBe(504);
     const body = await res.json();
     expect(body.error).toBe("backend_timeout");
+  });
+
+  it("does not leak internal exceptions when fetchWeather throws", async () => {
+    mockFetchWeather.mockRejectedValue(
+      new Error("ECONNREFUSED 127.0.0.1:8000\n    at fetchWeather (api-client.ts:44:11)")
+    );
+
+    const res = await GET(makeRequest({ lat: "0", lon: "0" }));
+    expect(res.status).toBe(503);
+    const body = await res.json();
+    expect(body.error).toBe("backend_unavailable");
+    expect(JSON.stringify(body)).not.toContain("ECONNREFUSED");
+    expect(JSON.stringify(body)).not.toContain("api-client.ts");
+    expect(JSON.stringify(body)).not.toContain("stack");
   });
 
   // ---- Edge cases ----

@@ -43,6 +43,15 @@ const MOCK_WEATHER: WeatherResponse = {
   ai_summary: null,
 };
 
+function jsonResponse(body: unknown, init?: { ok?: boolean; status?: number; headers?: Headers }) {
+  return {
+    ok: init?.ok ?? true,
+    status: init?.status ?? 200,
+    json: () => Promise.resolve(body),
+    headers: init?.headers ?? new Headers(),
+  };
+}
+
 beforeEach(() => {
   vi.stubEnv("BACKEND_URL", "http://localhost:8000");
 });
@@ -56,12 +65,9 @@ describe("fetchWeather", () => {
   it("returns data on successful response", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn().mockResolvedValue({
-        ok: true,
-        status: 200,
-        json: () => Promise.resolve(MOCK_WEATHER),
-        headers: new Headers({ "X-Cache": "MISS" }),
-      })
+      vi.fn().mockResolvedValue(
+        jsonResponse(MOCK_WEATHER, { headers: new Headers({ "X-Cache": "MISS" }) })
+      )
     );
 
     const result = await fetchWeather({ lat: -1.29, lon: 36.82 });
@@ -76,12 +82,9 @@ describe("fetchWeather", () => {
   it("returns cache HIT status from header", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn().mockResolvedValue({
-        ok: true,
-        status: 200,
-        json: () => Promise.resolve(MOCK_WEATHER),
-        headers: new Headers({ "X-Cache": "HIT" }),
-      })
+      vi.fn().mockResolvedValue(
+        jsonResponse(MOCK_WEATHER, { headers: new Headers({ "X-Cache": "HIT" }) })
+      )
     );
 
     const result = await fetchWeather({ lat: -1.29, lon: 36.82 });
@@ -89,12 +92,7 @@ describe("fetchWeather", () => {
   });
 
   it("forwards all query parameters", async () => {
-    const mockFetch = vi.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: () => Promise.resolve(MOCK_WEATHER),
-      headers: new Headers(),
-    });
+    const mockFetch = vi.fn().mockResolvedValue(jsonResponse(MOCK_WEATHER));
     vi.stubGlobal("fetch", mockFetch);
 
     await fetchWeather({
@@ -107,6 +105,8 @@ describe("fetchWeather", () => {
     });
 
     const calledUrl = new URL(mockFetch.mock.calls[0][0]);
+    expect(calledUrl.pathname).toBe("/weather");
+    expect(calledUrl.origin).toBe("http://localhost:8000");
     expect(calledUrl.searchParams.get("lat")).toBe("0");
     expect(calledUrl.searchParams.get("lon")).toBe("0");
     expect(calledUrl.searchParams.get("days")).toBe("3");
@@ -116,12 +116,7 @@ describe("fetchWeather", () => {
   });
 
   it("omits optional parameters when not provided", async () => {
-    const mockFetch = vi.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: () => Promise.resolve(MOCK_WEATHER),
-      headers: new Headers(),
-    });
+    const mockFetch = vi.fn().mockResolvedValue(jsonResponse(MOCK_WEATHER));
     vi.stubGlobal("fetch", mockFetch);
 
     await fetchWeather({ lat: 1, lon: 2 });
@@ -134,12 +129,7 @@ describe("fetchWeather", () => {
   });
 
   it("uses cache: no-store", async () => {
-    const mockFetch = vi.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: () => Promise.resolve(MOCK_WEATHER),
-      headers: new Headers(),
-    });
+    const mockFetch = vi.fn().mockResolvedValue(jsonResponse(MOCK_WEATHER));
     vi.stubGlobal("fetch", mockFetch);
 
     await fetchWeather({ lat: 1, lon: 2 });
@@ -147,18 +137,27 @@ describe("fetchWeather", () => {
     expect(mockFetch.mock.calls[0][1]).toMatchObject({ cache: "no-store" });
   });
 
+  it("calls FastAPI /weather, not WeatherAI", async () => {
+    const mockFetch = vi.fn().mockResolvedValue(jsonResponse(MOCK_WEATHER));
+    vi.stubGlobal("fetch", mockFetch);
+
+    await fetchWeather({ lat: 1, lon: 2 });
+
+    const calledUrl = String(mockFetch.mock.calls[0][0]);
+    expect(calledUrl).toContain("http://localhost:8000/weather");
+    expect(calledUrl).not.toContain("weather-ai");
+    expect(calledUrl).not.toContain("api.weather-ai.co");
+  });
+
   it("preserves backend error shape on 400", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn().mockResolvedValue({
-        ok: false,
-        status: 400,
-        json: () =>
-          Promise.resolve({
-            error: "bad_request",
-            message: "lat must be between -90 and 90",
-          }),
-      })
+      vi.fn().mockResolvedValue(
+        jsonResponse(
+          { error: "bad_request", message: "lat must be between -90 and 90" },
+          { ok: false, status: 400 }
+        )
+      )
     );
 
     const result = await fetchWeather({ lat: 999, lon: 0 });
@@ -169,67 +168,79 @@ describe("fetchWeather", () => {
     }
   });
 
-  it("preserves backend error shape on 401", async () => {
+  it("preserves backend 403 plan_restriction", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn().mockResolvedValue({
-        ok: false,
-        status: 401,
-        json: () =>
-          Promise.resolve({
-            error: "auth_error",
-            message: "Invalid API key",
-          }),
-      })
+      vi.fn().mockResolvedValue(
+        jsonResponse(
+          { error: "plan_restriction", message: "Feature not available on this plan" },
+          { ok: false, status: 403 }
+        )
+      )
     );
 
     const result = await fetchWeather({ lat: 0, lon: 0 });
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.status).toBe(401);
-      expect(result.error.error).toBe("auth_error");
+      expect(result.status).toBe(403);
+      expect(result.error.error).toBe("plan_restriction");
     }
   });
 
-  it("preserves backend error shape on 429", async () => {
+  it("preserves backend 429 rate_limit", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn().mockResolvedValue({
-        ok: false,
-        status: 429,
-        json: () =>
-          Promise.resolve({
-            error: "rate_limited",
-            message: "Too many requests",
-          }),
-      })
+      vi.fn().mockResolvedValue(
+        jsonResponse(
+          { error: "rate_limit", message: "API quota exhausted" },
+          { ok: false, status: 429 }
+        )
+      )
     );
 
     const result = await fetchWeather({ lat: 0, lon: 0 });
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.status).toBe(429);
+      expect(result.error.error).toBe("rate_limit");
     }
   });
 
-  it("preserves backend error shape on 500", async () => {
+  it("preserves backend 502 upstream_auth (WeatherAI 401 is never forwarded as 401)", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn().mockResolvedValue({
-        ok: false,
-        status: 500,
-        json: () =>
-          Promise.resolve({
-            error: "server_error",
-            message: "Upstream server error",
-          }),
-      })
+      vi.fn().mockResolvedValue(
+        jsonResponse(
+          { error: "upstream_auth", message: "Service configuration error" },
+          { ok: false, status: 502 }
+        )
+      )
     );
 
     const result = await fetchWeather({ lat: 0, lon: 0 });
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.status).toBe(500);
+      expect(result.status).toBe(502);
+      expect(result.error.error).toBe("upstream_auth");
+    }
+  });
+
+  it("preserves backend 502 upstream_error", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        jsonResponse(
+          { error: "upstream_error", message: "Weather service temporarily unavailable" },
+          { ok: false, status: 502 }
+        )
+      )
+    );
+
+    const result = await fetchWeather({ lat: 0, lon: 0 });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.status).toBe(502);
+      expect(result.error.error).toBe("upstream_error");
     }
   });
 
@@ -240,6 +251,7 @@ describe("fetchWeather", () => {
         ok: false,
         status: 502,
         json: () => Promise.reject(new Error("not json")),
+        headers: new Headers(),
       })
     );
 
@@ -248,6 +260,41 @@ describe("fetchWeather", () => {
     if (!result.ok) {
       expect(result.status).toBe(502);
       expect(result.error.message).toContain("502");
+      expect(JSON.stringify(result.error)).not.toContain("not json");
+    }
+  });
+
+  it("returns 502 for malformed JSON on a 200 response", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: () => Promise.reject(new Error("Unexpected token")),
+        headers: new Headers(),
+      })
+    );
+
+    const result = await fetchWeather({ lat: 0, lon: 0 });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.status).toBe(502);
+      expect(result.error.error).toBe("malformed_response");
+      expect(JSON.stringify(result.error)).not.toContain("Unexpected token");
+    }
+  });
+
+  it("returns 502 when a 200 body is not the public weather contract", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(jsonResponse({ temperature: 22, weathercode: 1 }))
+    );
+
+    const result = await fetchWeather({ lat: 0, lon: 0 });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.status).toBe(502);
+      expect(result.error.error).toBe("malformed_response");
     }
   });
 
@@ -262,6 +309,7 @@ describe("fetchWeather", () => {
     if (!result.ok) {
       expect(result.status).toBe(503);
       expect(result.error.error).toBe("backend_unavailable");
+      expect(JSON.stringify(result.error)).not.toContain("fetch failed");
     }
   });
 
@@ -277,12 +325,16 @@ describe("fetchWeather", () => {
     }
   });
 
-  it("throws when BACKEND_URL is not set", async () => {
+  it("returns 503 when BACKEND_URL is not set", async () => {
     vi.unstubAllEnvs();
     delete process.env.BACKEND_URL;
 
-    await expect(fetchWeather({ lat: 0, lon: 0 })).rejects.toThrow(
-      "BACKEND_URL is not set"
-    );
+    const result = await fetchWeather({ lat: 0, lon: 0 });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.status).toBe(503);
+      expect(result.error.error).toBe("backend_unavailable");
+      expect(JSON.stringify(result.error)).not.toContain("BACKEND_URL");
+    }
   });
 });
