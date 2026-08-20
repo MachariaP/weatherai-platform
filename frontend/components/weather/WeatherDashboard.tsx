@@ -60,9 +60,9 @@ export function WeatherDashboard() {
 
       {data.ai_summary && <AISummary summary={data.ai_summary} />}
 
-      <ForecastGrid days={data.daily} units={units} />
+      <ForecastGrid days={data.daily} />
 
-      <HourlyScroll hours={data.hourly} units={units} />
+      <HourlyScroll hours={data.hourly} />
     </div>
   );
 }

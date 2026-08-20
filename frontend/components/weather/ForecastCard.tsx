@@ -2,45 +2,53 @@
 
 import type { ForecastDay } from "@/lib/types";
 import { WeatherIcon, getWeatherIconName } from "@/lib/weather-icons";
+import { formatDayName, formatPrecip } from "@/lib/format";
+import { DropletIcon } from "@/components/ui/icons";
 
 interface Props {
   day: ForecastDay;
-  units: "metric" | "imperial";
 }
 
-function formatDayName(dateStr: string): string {
-  const date = new Date(dateStr + "T00:00:00");
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const tomorrow = new Date(today);
-  tomorrow.setDate(tomorrow.getDate() + 1);
-
-  if (date.getTime() === today.getTime()) return "Today";
-  if (date.getTime() === tomorrow.getTime()) return "Tomorrow";
-  return date.toLocaleDateString("en", { weekday: "short" });
-}
-
-export function ForecastCard({ day, units }: Props) {
-  const tempUnit = units === "metric" ? "°" : "°";
+export function ForecastCard({ day }: Props) {
   const iconName = getWeatherIconName(day.weather_code);
+  const dayName = formatDayName(day.date);
+  const isToday = dayName === "Today";
+  const precip = formatPrecip(day.precipitation);
 
   return (
-    <div className="rounded-xl border border-[var(--card-border)] bg-[var(--card)] p-4 text-center">
-      <p className="text-xs font-medium text-[var(--muted)] mb-2">
-        {formatDayName(day.date)}
+    <div
+      className={`w-28 shrink-0 rounded-card border p-3.5 text-center transition-colors md:w-auto ${
+        isToday
+          ? "border-accent/40 bg-accent/5 shadow-glow"
+          : "border-border bg-card hover:bg-card-hover"
+      }`}
+    >
+      <p
+        className={`text-xs font-semibold uppercase tracking-wide ${
+          isToday ? "text-accent" : "text-text-muted"
+        }`}
+      >
+        {dayName}
       </p>
-      <p className="text-3xl mb-2">
-        <WeatherIcon name={iconName} className="h-9 w-9" />
-      </p>
-      <p className="text-sm font-medium">
-        {Math.round(day.temp_max)}{tempUnit}{" "}
-        <span className="text-[var(--muted)]">
-          {Math.round(day.temp_min)}{tempUnit}
+      <div className="my-3 grid place-items-center">
+        <WeatherIcon
+          name={iconName}
+          className={`h-8 w-8 ${
+            isToday ? "text-accent" : "text-text-secondary"
+          }`}
+        />
+      </div>
+      <p className="text-sm font-semibold tabular-nums text-text">
+        {Math.round(day.temp_max)}°
+        <span className="font-medium text-text-muted">
+          {" "}
+          / {Math.round(day.temp_min)}°
         </span>
       </p>
-      {day.precipitation > 0 && (
-        <p className="text-xs text-[var(--accent)] mt-1">
-          💧 {day.precipitation}mm
+      {precip && (
+        <p className="mt-2 inline-flex items-center gap-1 rounded-full bg-accent/10 px-2 py-0.5 text-[11px] font-medium text-accent">
+          <DropletIcon className="h-3 w-3" />
+          {precip}
         </p>
       )}
     </div>

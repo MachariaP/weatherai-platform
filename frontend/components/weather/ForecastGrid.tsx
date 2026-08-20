@@ -5,20 +5,19 @@ import { ForecastCard } from "./ForecastCard";
 
 interface Props {
   days: ForecastDay[];
-  units: "metric" | "imperial";
 }
 
-export function ForecastGrid({ days, units }: Props) {
+export function ForecastGrid({ days }: Props) {
   if (days.length === 0) return null;
 
   return (
-    <section>
-      <h2 className="text-sm font-medium text-[var(--muted)] mb-3">
-        {days.length}-Day Forecast
+    <section aria-label="Forecast">
+      <h2 className="mb-3 text-xs font-semibold uppercase tracking-[0.12em] text-text-muted">
+        {days.length}-day forecast
       </h2>
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+      <div className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-2 scroll-slim sm:-mx-6 sm:px-6 md:mx-0 md:grid md:grid-cols-7 md:gap-3 md:overflow-visible md:px-0 md:pb-0">
         {days.map((day) => (
-          <ForecastCard key={day.date} day={day} units={units} />
+          <ForecastCard key={day.date} day={day} />
         ))}
       </div>
     </section>
