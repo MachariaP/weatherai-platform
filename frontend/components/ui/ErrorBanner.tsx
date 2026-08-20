@@ -1,6 +1,7 @@
 "use client";
 
 import type { WeatherError } from "@/lib/types";
+import { userFacingError } from "@/lib/user-error";
 import { AlertIcon, RefreshIcon } from "./icons";
 
 interface ErrorBannerProps {
@@ -8,21 +9,8 @@ interface ErrorBannerProps {
   onRetry?: () => void;
 }
 
-const ERROR_TITLES: Record<string, string> = {
-  bad_request: "Invalid coordinates",
-  upstream_auth: "Service configuration error",
-  plan_restriction: "Plan restriction",
-  rate_limit: "Weather service is busy",
-  upstream_error: "Weather service unavailable",
-  malformed_response: "Weather service error",
-  timeout: "Request timed out",
-  network_error: "Could not reach the server",
-  backend_unavailable: "Backend unavailable",
-  backend_timeout: "Request timed out",
-};
-
 export function ErrorBanner({ error, onRetry }: ErrorBannerProps) {
-  const title = ERROR_TITLES[error.error] ?? "Something went wrong";
+  const { title, body } = userFacingError(error);
 
   return (
     <div
@@ -35,9 +23,9 @@ export function ErrorBanner({ error, onRetry }: ErrorBannerProps) {
         </span>
         <div className="flex-1">
           <h2 className="text-base font-semibold text-text">{title}</h2>
-          <p className="mt-1 text-sm text-text-secondary">{error.message}</p>
+          <p className="mt-1 text-sm text-text-secondary">{body}</p>
         </div>
-        {onRetry && (
+        {onRetry ? (
           <button
             type="button"
             onClick={onRetry}
@@ -46,7 +34,7 @@ export function ErrorBanner({ error, onRetry }: ErrorBannerProps) {
             <RefreshIcon className="h-4 w-4" />
             Retry
           </button>
-        )}
+        ) : null}
       </div>
     </div>
   );
