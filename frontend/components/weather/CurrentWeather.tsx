@@ -178,7 +178,7 @@ export function CurrentWeather({
             <Detail
               icon={<DropletIcon className="h-4 w-4" />}
               label="Precipitation"
-              value={formatPrecipAmount(precip24h, units)}
+              value={formatPrecipAmount(precip24h, units) ?? "Unavailable"}
               sub="In last 24h"
             />
           ) : null}

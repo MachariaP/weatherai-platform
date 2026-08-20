@@ -51,6 +51,19 @@ export function formatHour(timeStr: string): string {
   return date.toLocaleTimeString("en", { hour: "numeric", hour12: true });
 }
 
+/**
+ * Clock digits from FastAPI `observed_at` (WeatherAI `current.time`).
+ *
+ * The backend passes the string through unchanged. Typical values look like
+ * `2026-08-19T12:00` with no timezone. This helper prints those clock digits
+ * and does not convert them into the browser locale or the selected location.
+ */
+export function formatObservedClock(iso: string | null | undefined): string | null {
+  if (!iso?.trim()) return null;
+  const match = iso.trim().match(/T(\d{2}:\d{2})/);
+  return match ? match[1] : null;
+}
+
 export function formatTime(iso: string | null): string | null {
   if (!iso) return null;
   const date = new Date(iso);
@@ -66,19 +79,25 @@ export function formatDate(iso: string | null): string | null {
 }
 
 /**
- * Label precipitation using the backend-provided number.
+ * Label a precipitation AMOUNT using the backend-provided number.
  * Does not convert mm ↔ in — FastAPI already returns the requested units.
+ * 0 is a real measurement. null / non-finite means unavailable.
  */
-export function formatPrecip(value: number, units: Units = "metric"): string {
-  if (!Number.isFinite(value) || value <= 0) return "";
-  const amount = value >= 1 ? String(Math.round(value)) : value.toFixed(1);
-  return `${amount} ${units === "imperial" ? "in" : "mm"}`;
+export function formatPrecip(
+  value: number | null | undefined,
+  units: Units = "metric"
+): string {
+  return formatPrecipAmount(value, units) ?? "";
 }
 
-/** Includes zero. Used for daily totals that FastAPI actually returned. */
-export function formatPrecipAmount(value: number, units: Units = "metric"): string {
-  if (!Number.isFinite(value)) return "Unavailable";
-  const amount = value === 0 ? "0" : Math.abs(value) >= 1 ? String(Math.round(value)) : value.toFixed(1);
+/** Includes verified zero. Returns null when FastAPI did not send a finite amount. */
+export function formatPrecipAmount(
+  value: number | null | undefined,
+  units: Units = "metric"
+): string | null {
+  if (typeof value !== "number" || !Number.isFinite(value)) return null;
+  const amount =
+    value === 0 ? "0" : Math.abs(value) >= 1 ? String(Math.round(value)) : value.toFixed(1);
   return `${amount} ${units === "imperial" ? "in" : "mm"}`;
 }
 

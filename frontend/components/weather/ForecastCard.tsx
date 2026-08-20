@@ -5,6 +5,7 @@ import { WeatherIcon, getWeatherIconName } from "@/lib/weather-icons";
 import {
   formatDayName,
   formatForecastDate,
+  formatPrecipAmount,
   formatTemp,
   type Units,
 } from "@/lib/format";
@@ -23,9 +24,10 @@ function tempLabel(value: unknown): string {
 }
 
 /**
- * One day from FastAPI ForecastDay. High/low only — no invented extras.
+ * One day from FastAPI ForecastDay. Precipitation is an amount, shown only
+ * when FastAPI sent a finite value (including verified zero).
  */
-export function ForecastCard({ day }: Props) {
+export function ForecastCard({ day, units }: Props) {
   const iconName = getWeatherIconName(
     isFiniteNumber(day.weather_code) ? day.weather_code : -1
   );
@@ -36,13 +38,15 @@ export function ForecastCard({ day }: Props) {
   const description = day.weather_description?.trim() || "Conditions unavailable";
   const high = tempLabel(day.temp_max);
   const low = tempLabel(day.temp_min);
+  const precip = formatPrecipAmount(day.precipitation, units);
+  const precipLabel = precip ? `, ${precip}` : "";
 
   return (
     <article
-      className={`relative flex items-center justify-between px-4 py-2 ${
+      className={`relative flex items-center justify-between gap-3 px-4 py-2 ${
         isToday ? "bg-accent/5" : ""
       }`}
-      aria-label={`${dayName}${dateLabel ? `, ${dateLabel}` : ""}: ${description}, high ${high}, low ${low}`}
+      aria-label={`${dayName}${dateLabel ? `, ${dateLabel}` : ""}: ${description}, high ${high}, low ${low}${precipLabel}`}
     >
       {isToday ? (
         <span
@@ -57,17 +61,22 @@ export function ForecastCard({ day }: Props) {
       >
         {dayName}
       </p>
-      <div className="flex flex-1 items-center justify-center">
+      <div className="flex min-w-0 flex-1 items-center gap-2">
         <WeatherIcon
           name={iconName}
-          className={`h-5 w-5 ${isToday ? "text-accent" : "text-text-secondary"}`}
+          className={`h-5 w-5 shrink-0 ${isToday ? "text-accent" : "text-text-secondary"}`}
         />
+        <p className="truncate text-xs text-text-muted">{description}</p>
       </div>
-      <p className="sr-only">{description}</p>
-      <p className="flex w-24 shrink-0 items-center justify-end gap-2 text-sm tabular-nums">
-        <span className="text-text">{high}</span>
-        <span className="text-text-muted">{low}</span>
-      </p>
+      <div className="shrink-0 text-right">
+        <p className="flex items-center justify-end gap-2 text-sm tabular-nums">
+          <span className="text-text">{high}</span>
+          <span className="text-text-muted">{low}</span>
+        </p>
+        {precip ? (
+          <p className="mt-0.5 text-[11px] tabular-nums text-text-muted">{precip}</p>
+        ) : null}
+      </div>
     </article>
   );
 }

@@ -30,7 +30,8 @@ export interface ForecastDay {
   date: string;
   temp_max: number;
   temp_min: number;
-  precipitation: number;
+  /** Precipitation amount (not probability). 0 is verified zero; null is unavailable. */
+  precipitation: number | null;
   weather_code: number;
   weather_description: string;
 }
@@ -38,7 +39,8 @@ export interface ForecastDay {
 export interface HourlyForecast {
   time: string;
   temperature: number;
-  precipitation: number;
+  /** Precipitation amount (not probability). 0 is verified zero; null is unavailable. */
+  precipitation: number | null;
   weather_code: number;
   weather_description: string;
 }

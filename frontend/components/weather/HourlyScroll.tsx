@@ -5,6 +5,7 @@ import type { HourlyForecast } from "@/lib/types";
 import { WeatherIcon, getWeatherIconName } from "@/lib/weather-icons";
 import {
   formatHour24,
+  formatPrecipAmount,
   formatTemp,
   isCurrentHour,
   type Units,
@@ -44,9 +45,9 @@ function hourLabel(time: string | undefined): string {
 
 /**
  * Horizontally scrollable hourly outlook from FastAPI `hourly`.
- * Cards show time, icon, and temperature only — matching the Stitch HTML.
+ * Precipitation is an amount (never a percent), shown only when finite.
  */
-export function HourlyScroll({ hours }: Props) {
+export function HourlyScroll({ hours, units }: Props) {
   const rows = Array.isArray(hours) ? hours : [];
 
   return (
@@ -74,13 +75,15 @@ export function HourlyScroll({ hours }: Props) {
               ? formatTemp(hour.temperature)
               : "—";
             const timeLabel = hourLabel(hour.time);
+            const precip = formatPrecipAmount(hour.precipitation, units);
+            const precipLabel = precip ? `, ${precip}` : "";
 
             return (
               <article
                 role="listitem"
                 key={hour.time?.trim() ? hour.time : `hour-${index}`}
-                aria-label={`${timeLabel}: ${description}, ${temperature}`}
-                className={`flex w-[4.5rem] shrink-0 flex-col items-center rounded-card border px-2 py-3 text-center ${
+                aria-label={`${timeLabel}: ${description}, ${temperature}${precipLabel}`}
+                className={`flex w-20 shrink-0 flex-col items-center rounded-card border px-2 py-3 text-center ${
                   now ? "border-accent/40 bg-surface" : "border-border bg-surface"
                 }`}
               >
@@ -108,6 +111,9 @@ export function HourlyScroll({ hours }: Props) {
                   }`}
                 >
                   {temperature}
+                </p>
+                <p className="mt-1 min-h-[1rem] text-[11px] tabular-nums text-text-muted">
+                  {precip ?? ""}
                 </p>
               </article>
             );
