@@ -44,11 +44,11 @@ export async function GET(request: NextRequest) {
   const lat = Number(latStr);
   const lon = Number(lonStr);
 
-  if (Number.isNaN(lat) || lat < -90 || lat > 90) {
+  if (!Number.isFinite(lat) || lat < -90 || lat > 90) {
     return badRequest("lat must be a number between -90 and 90");
   }
 
-  if (Number.isNaN(lon) || lon < -180 || lon > 180) {
+  if (!Number.isFinite(lon) || lon < -180 || lon > 180) {
     return badRequest("lon must be a number between -180 and 180");
   }
 
