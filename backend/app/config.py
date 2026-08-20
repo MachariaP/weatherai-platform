@@ -40,6 +40,18 @@ class Settings(BaseSettings):
     def cors_origin_list(self) -> list[str]:
         return parse_cors_origins(self.cors_origins)
 
+    @field_validator("cors_origins")
+    @classmethod
+    def _cors_origins_explicit(cls, v: str) -> str:
+        origins = parse_cors_origins(v)
+        if not origins:
+            raise ValueError("CORS_ORIGINS must include at least one origin")
+        if any(origin == "*" for origin in origins):
+            raise ValueError(
+                "CORS_ORIGINS must list explicit origins; wildcard * is not allowed"
+            )
+        return v
+
     @field_validator("weatherai_api_key")
     @classmethod
     def _key_format(cls, v: str) -> str:

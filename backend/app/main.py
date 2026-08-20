@@ -27,6 +27,8 @@ app.add_middleware(
     allow_origins=settings.cors_origin_list,
     allow_methods=["GET"],
     allow_headers=["*"],
+    expose_headers=["X-Request-ID", "X-Cache", "Retry-After"],
+    allow_credentials=False,
 )
 app.add_middleware(RequestContextMiddleware)
 
