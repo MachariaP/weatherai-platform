@@ -12,6 +12,7 @@ export default defineConfig({
     testTimeout: 8_000,
     hookTimeout: 8_000,
     pool: "threads",
+    exclude: ["e2e/**", "node_modules/**", ".next/**"],
     environmentOptions: {
       jsdom: {
         url: "http://127.0.0.1:9876/",

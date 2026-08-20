@@ -16,5 +16,11 @@ frontend/.env*.local
 frontend/next-env.d.ts
 frontend/*.tsbuildinfo
 
+# Playwright
+frontend/test-results/
+frontend/playwright-report/
+frontend/blob-report/
+frontend/playwright/.cache/
+
 # OS
 .DS_Store

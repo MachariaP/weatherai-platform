@@ -13,7 +13,16 @@ import path from "node:path";
 import { execSync } from "node:child_process";
 
 const FRONTEND_ROOT = path.resolve(__dirname, "..");
-const SKIP_DIRS = new Set(["node_modules", ".next", "coverage", "__tests__"]);
+const SKIP_DIRS = new Set([
+  "node_modules",
+  ".next",
+  "coverage",
+  "__tests__",
+  "test-results",
+  "playwright-report",
+  "blob-report",
+  "playwright",
+]);
 const SOURCE_EXTS = new Set([
   ".ts",
   ".tsx",
