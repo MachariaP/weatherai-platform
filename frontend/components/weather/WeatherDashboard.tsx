@@ -58,7 +58,7 @@ export function WeatherDashboard() {
         cacheStatus={cacheStatus}
       />
 
-      {data.ai_summary && <AISummary summary={data.ai_summary} />}
+      <AISummary enabled={aiEnabled} summary={data.ai_summary} error={error} />
 
       <ForecastGrid days={data.daily} />
 
