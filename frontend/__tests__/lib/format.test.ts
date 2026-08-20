@@ -9,7 +9,11 @@ import {
   formatTime,
   formatDate,
   formatPrecip,
+  formatPrecipAmount,
   formatForecastDate,
+  formatLatLon,
+  parseLatLonQuery,
+  uvBand,
 } from "@/lib/format";
 
 describe("formatTemp", () => {
@@ -100,6 +104,47 @@ describe("formatPrecip", () => {
 
   it("omits non-finite precipitation", () => {
     expect(formatPrecip(Number.NaN)).toBe("");
+  });
+});
+
+describe("formatPrecipAmount", () => {
+  it("includes zero totals from FastAPI", () => {
+    expect(formatPrecipAmount(0)).toBe("0 mm");
+    expect(formatPrecipAmount(2.4, "imperial")).toBe("2 in");
+  });
+
+  it("does not invent a value for non-finite precipitation", () => {
+    expect(formatPrecipAmount(Number.NaN)).toBe("Unavailable");
+  });
+});
+
+describe("formatLatLon", () => {
+  it("renders four-decimal coordinates", () => {
+    expect(formatLatLon(-1.2921, 36.8219)).toBe("-1.2921, 36.8219");
+  });
+
+  it("returns null when a coordinate is not finite", () => {
+    expect(formatLatLon(Number.NaN, 36)).toBeNull();
+  });
+});
+
+describe("parseLatLonQuery", () => {
+  it("parses comma-separated coordinates", () => {
+    expect(parseLatLonQuery("-1.2921, 36.8219")).toEqual({
+      lat: -1.2921,
+      lon: 36.8219,
+    });
+  });
+
+  it("rejects a place name", () => {
+    expect(parseLatLonQuery("Nairobi")).toBeNull();
+  });
+});
+
+describe("uvBand", () => {
+  it("labels a numeric UV index without inventing a value", () => {
+    expect(uvBand(6)).toBe("High");
+    expect(uvBand(1)).toBe("Low");
   });
 });
 

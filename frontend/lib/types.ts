@@ -19,6 +19,11 @@ export interface CurrentWeather {
   weather_description: string;
   is_day: boolean;
   observed_at: string | null;
+  feels_like?: number | null;
+  humidity?: number | null;
+  uv_index?: number | null;
+  pressure?: number | null;
+  precip_last_24h?: number | null;
 }
 
 export interface ForecastDay {
@@ -46,6 +51,13 @@ export interface WeatherResponse {
   daily: ForecastDay[];
   hourly: HourlyForecast[];
   ai_summary: string | null;
+  place_name?: string | null;
+}
+
+export interface GeocodeResult {
+  lat: number;
+  lon: number;
+  label: string;
 }
 
 export interface WeatherError {

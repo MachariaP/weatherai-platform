@@ -75,6 +75,46 @@ export function formatPrecip(value: number, units: Units = "metric"): string {
   return `${amount} ${units === "imperial" ? "in" : "mm"}`;
 }
 
+/** Includes zero. Used for daily totals that FastAPI actually returned. */
+export function formatPrecipAmount(value: number, units: Units = "metric"): string {
+  if (!Number.isFinite(value)) return "Unavailable";
+  const amount = value === 0 ? "0" : Math.abs(value) >= 1 ? String(Math.round(value)) : value.toFixed(1);
+  return `${amount} ${units === "imperial" ? "in" : "mm"}`;
+}
+
+export function formatLatLon(lat: number, lon: number): string | null {
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+  return `${lat.toFixed(4)}, ${lon.toFixed(4)}`;
+}
+
+export function parseLatLonQuery(raw: string): { lat: number; lon: number } | null {
+  const parts = raw.trim().split(/[,\s;]+/).filter(Boolean);
+  if (parts.length !== 2) return null;
+  const lat = Number(parts[0]);
+  const lon = Number(parts[1]);
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+  if (lat < -90 || lat > 90 || lon < -180 || lon > 180) return null;
+  return { lat, lon };
+}
+
+export function uvBand(value: number): string {
+  if (value < 3) return "Low";
+  if (value < 6) return "Moderate";
+  if (value < 8) return "High";
+  if (value < 11) return "Very high";
+  return "Extreme";
+}
+
+export function formatHour24(timeStr: string): string {
+  const date = new Date(timeStr);
+  if (Number.isNaN(date.getTime())) return timeStr;
+  return date.toLocaleTimeString("en", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+}
+
 export function formatForecastDate(dateStr: string): string | null {
   if (!dateStr?.trim()) return null;
   const date = new Date(dateStr.includes("T") ? dateStr : `${dateStr}T00:00:00`);

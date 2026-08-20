@@ -5,7 +5,7 @@
  * backend.  This tests the client layer in isolation.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { fetchWeather } from "@/lib/api-client";
+import { fetchGeocode, fetchGeolocate, fetchReverse, fetchWeather } from "@/lib/api-client";
 import type { WeatherResponse } from "@/lib/types";
 
 const MOCK_WEATHER: WeatherResponse = {
@@ -336,5 +336,75 @@ describe("fetchWeather", () => {
       expect(result.error.error).toBe("backend_unavailable");
       expect(JSON.stringify(result.error)).not.toContain("BACKEND_URL");
     }
+  });
+});
+
+describe("fetchGeocode", () => {
+  it("maps the first FastAPI hit to lat, lon, and label", async () => {
+    const mockFetch = vi.fn().mockResolvedValue(
+      jsonResponse({ lat: -1.2864, lon: 36.8172, label: "Nairobi, Kenya" })
+    );
+    vi.stubGlobal("fetch", mockFetch);
+
+    const result = await fetchGeocode("Nairobi");
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data).toEqual({
+        lat: -1.2864,
+        lon: 36.8172,
+        label: "Nairobi, Kenya",
+      });
+    }
+    const calledUrl = String(mockFetch.mock.calls[0][0]);
+    expect(calledUrl).toContain("http://localhost:8000/geocode");
+    expect(calledUrl).toContain("q=Nairobi");
+    expect(calledUrl).not.toContain("nominatim");
+    expect(calledUrl).not.toContain("weather-ai");
+  });
+
+  it("returns 504 on timeout", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockRejectedValue(new DOMException("Signal timed out", "TimeoutError"))
+    );
+    const result = await fetchGeocode("Nairobi");
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.status).toBe(504);
+      expect(result.error.error).toBe("backend_timeout");
+    }
+  });
+});
+
+describe("fetchGeolocate", () => {
+  it("calls FastAPI /geolocate and does not leak upstream hosts", async () => {
+    const mockFetch = vi.fn().mockResolvedValue(
+      jsonResponse({ lat: -1.2864, lon: 36.8172, label: "Nairobi, Kenya" })
+    );
+    vi.stubGlobal("fetch", mockFetch);
+
+    const result = await fetchGeolocate("8.8.8.8");
+    expect(result.ok).toBe(true);
+    const calledUrl = String(mockFetch.mock.calls[0][0]);
+    expect(calledUrl).toContain("http://localhost:8000/geolocate");
+    expect(calledUrl).not.toContain("ipwho");
+    expect(mockFetch.mock.calls[0][1]).toMatchObject({
+      headers: { "X-Forwarded-For": "8.8.8.8" },
+    });
+  });
+});
+
+describe("fetchReverse", () => {
+  it("calls FastAPI /reverse, not an upstream host", async () => {
+    const mockFetch = vi.fn().mockResolvedValue(
+      jsonResponse({ lat: 0, lon: 0, label: "Gulf of Guinea" })
+    );
+    vi.stubGlobal("fetch", mockFetch);
+
+    const result = await fetchReverse(0, 0);
+    expect(result.ok).toBe(true);
+    const calledUrl = String(mockFetch.mock.calls[0][0]);
+    expect(calledUrl).toContain("http://localhost:8000/reverse");
+    expect(calledUrl).not.toContain("nominatim");
   });
 });

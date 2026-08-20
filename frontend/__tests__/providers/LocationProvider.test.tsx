@@ -2,7 +2,7 @@
  * @vitest-environment jsdom
  */
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { act, renderHook } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import {
   LocationProvider,
@@ -62,7 +62,7 @@ describe("LocationProvider", () => {
     expect(result.current.location?.lon).toBe(-0.1278);
   });
 
-  it("detects browser geolocation into lat/lon", () => {
+  it("detects browser geolocation into lat/lon", async () => {
     vi.stubGlobal("navigator", {
       geolocation: {
         getCurrentPosition: (
@@ -96,14 +96,17 @@ describe("LocationProvider", () => {
       result.current.detectLocation();
     });
 
-    expect(result.current.location?.lat).toBe(-1.2921);
+    await waitFor(() => {
+      expect(result.current.location?.lat).toBe(-1.2921);
+    });
     expect(result.current.location?.lon).toBe(36.8219);
     expect(result.current.detecting).toBe(false);
     expect(result.current.error).toBeNull();
   });
 
-  it("records an error when geolocation is unavailable", () => {
+  it("records an error when geolocation is unavailable", async () => {
     vi.stubGlobal("navigator", {});
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("fetch failed")));
 
     const { result } = renderHook(() => useLocation(), { wrapper });
 
@@ -111,11 +114,15 @@ describe("LocationProvider", () => {
       result.current.detectLocation();
     });
 
+    await waitFor(() => {
+      expect(result.current.error).toMatch(/not supported|unavailable/i);
+    });
     expect(result.current.location).toBeNull();
-    expect(result.current.error).toMatch(/not supported/i);
   });
 
-  it("records an error when geolocation is denied", () => {
+  it("records an error when geolocation is denied", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
     vi.stubGlobal("navigator", {
       geolocation: {
         getCurrentPosition: (
@@ -139,12 +146,15 @@ describe("LocationProvider", () => {
       result.current.detectLocation();
     });
 
-    expect(result.current.error).toBe("Location permission was denied");
+    await waitFor(() => {
+      expect(result.current.error).toBe("Location permission was denied");
+    });
     expect(result.current.detecting).toBe(false);
     expect(result.current.location).toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("records a safe error when position is unavailable", () => {
+  it("records a safe error when position is unavailable", async () => {
     vi.stubGlobal("navigator", {
       geolocation: {
         getCurrentPosition: (
@@ -161,6 +171,7 @@ describe("LocationProvider", () => {
         },
       },
     });
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("fetch failed")));
 
     const { result } = renderHook(() => useLocation(), { wrapper });
 
@@ -168,11 +179,13 @@ describe("LocationProvider", () => {
       result.current.detectLocation();
     });
 
-    expect(result.current.error).toBe("Your position is currently unavailable");
+    await waitFor(() => {
+      expect(result.current.error).toBe("Your position is currently unavailable");
+    });
     expect(JSON.stringify(result.current.error)).not.toContain("internal");
   });
 
-  it("records a safe error when geolocation times out", () => {
+  it("records a safe error when geolocation times out", async () => {
     vi.stubGlobal("navigator", {
       geolocation: {
         getCurrentPosition: (
@@ -189,6 +202,7 @@ describe("LocationProvider", () => {
         },
       },
     });
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("fetch failed")));
 
     const { result } = renderHook(() => useLocation(), { wrapper });
 
@@ -196,16 +210,61 @@ describe("LocationProvider", () => {
       result.current.detectLocation();
     });
 
-    expect(result.current.error).toBe("Location request timed out");
+    await waitFor(() => {
+      expect(result.current.error).toMatch(/unavailable|timed out/i);
+    });
     expect(JSON.stringify(result.current.error)).not.toContain("GeolocationPositionError");
   });
 
-  it("clears a previous geolocation error when a location is set", () => {
+  it("falls back to IP geolocation when the browser cannot get a fix", async () => {
+    vi.stubGlobal("navigator", {
+      geolocation: {
+        getCurrentPosition: (
+          _success: PositionCallback,
+          error?: PositionErrorCallback,
+        ) => {
+          error?.({
+            code: 2,
+            message: "Position unavailable",
+            PERMISSION_DENIED: 1,
+            POSITION_UNAVAILABLE: 2,
+            TIMEOUT: 3,
+          });
+        },
+      },
+    });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: () =>
+          Promise.resolve({ lat: -1.2864, lon: 36.8172, label: "Nairobi, Kenya" }),
+      })
+    );
+
+    const { result } = renderHook(() => useLocation(), { wrapper });
+
+    act(() => {
+      result.current.detectLocation();
+    });
+
+    await waitFor(() => {
+      expect(result.current.location?.label).toBe("Nairobi, Kenya");
+    });
+    expect(result.current.location?.lat).toBe(-1.2864);
+    expect(result.current.error).toBeNull();
+    expect(String(vi.mocked(fetch).mock.calls[0][0])).toBe("/api/geolocate");
+  });
+
+  it("clears a previous geolocation error when a location is set", async () => {
     vi.stubGlobal("navigator", {});
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("fetch failed")));
     const { result } = renderHook(() => useLocation(), { wrapper });
 
     act(() => result.current.detectLocation());
-    expect(result.current.error).not.toBeNull();
+    await waitFor(() => {
+      expect(result.current.error).not.toBeNull();
+    });
 
     act(() => result.current.setLocation(NAIROBI));
 

@@ -6,6 +6,16 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: path.resolve(__dirname),
   },
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: [
+          { key: "Permissions-Policy", value: "geolocation=(self)" },
+        ],
+      },
+    ];
+  },
 };
 
 export default nextConfig;
