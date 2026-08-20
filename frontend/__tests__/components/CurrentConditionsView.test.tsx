@@ -80,8 +80,11 @@ describe("CurrentConditionsView", () => {
     render(<CurrentConditionsView />, { wrapper });
     searchNairobi();
 
-    expect(screen.getByText("Loading current weather…")).toBeDefined();
+    expect(screen.getByRole("region", { name: "Loading current weather" })).toBeDefined();
+    expect(screen.getByRole("region", { name: "Loading hourly forecast" })).toBeDefined();
+    expect(screen.getByRole("region", { name: "Loading 7-day forecast" })).toBeDefined();
     expect(screen.queryByText("Current weather is unavailable")).toBeNull();
+    expect(screen.queryByRole("region", { name: "Current weather" })).toBeNull();
   });
 
   it("renders current weather from the public contract", async () => {
@@ -144,7 +147,7 @@ describe("CurrentConditionsView", () => {
     searchNairobi();
 
     await waitFor(() => expect(screen.getByRole("alert")).toBeDefined());
-    expect(screen.getByText("Plan restriction")).toBeDefined();
+    expect(screen.getByText("AI insight unavailable")).toBeDefined();
     expect(screen.getByText("AI insight could not be loaded for this request.")).toBeDefined();
   });
 
@@ -157,7 +160,9 @@ describe("CurrentConditionsView", () => {
     searchNairobi();
 
     await waitFor(() => expect(screen.getByRole("alert")).toBeDefined());
-    expect(screen.getByText("Current weather is unavailable")).toBeDefined();
+    expect(screen.getByText("Weather data incomplete")).toBeDefined();
+    expect(screen.getByRole("button", { name: /retry/i })).toBeDefined();
+    expect(screen.queryByRole("region", { name: "Current weather" })).toBeNull();
   });
 
   it("renders hourly and 7-day outlook from the public arrays", async () => {
@@ -205,5 +210,107 @@ describe("CurrentConditionsView", () => {
     await waitFor(() => expect(screen.getByText("Overcast")).toBeDefined());
     expect(screen.getByText("Hourly forecast is not available.")).toBeDefined();
     expect(screen.getByText("Daily forecast is not available.")).toBeDefined();
+  });
+
+  it("shows a safe 400 invalid-coordinates error", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        jsonResponse(
+          { error: "bad_request", message: "lat must be between -90 and 90" },
+          { ok: false, status: 400 }
+        )
+      )
+    );
+    render(<CurrentConditionsView />, { wrapper });
+    searchNairobi();
+
+    await waitFor(() => expect(screen.getByRole("alert")).toBeDefined());
+    expect(screen.getByText("Invalid coordinates")).toBeDefined();
+    expect(screen.getByText("lat must be between -90 and 90")).toBeDefined();
+    expect(screen.getByRole("button", { name: /retry/i })).toBeDefined();
+  });
+
+  it("shows a safe 503 unavailable error", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        jsonResponse(
+          { error: "backend_unavailable", message: "Backend is unreachable" },
+          { ok: false, status: 503 }
+        )
+      )
+    );
+    render(<CurrentConditionsView />, { wrapper });
+    searchNairobi();
+
+    await waitFor(() => expect(screen.getByText("Weather unavailable")).toBeDefined());
+    expect(screen.queryByText("Backend is unreachable")).toBeNull();
+    expect(screen.getByRole("button", { name: /retry/i })).toBeDefined();
+  });
+
+  it("shows a timeout error without technical details", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        jsonResponse(
+          { error: "backend_timeout", message: "Backend did not respond in time" },
+          { ok: false, status: 504 }
+        )
+      )
+    );
+    render(<CurrentConditionsView />, { wrapper });
+    searchNairobi();
+
+    await waitFor(() => expect(screen.getByText("Request timed out")).toBeDefined());
+    expect(screen.getByText(/too long/i)).toBeDefined();
+    expect(screen.queryByText(/Backend did not respond/)).toBeNull();
+  });
+
+  it("retries a failed request", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        jsonResponse(
+          { error: "timeout", message: "Weather service did not respond in time" },
+          { ok: false, status: 504 }
+        )
+      )
+      .mockResolvedValueOnce(jsonResponse(MOCK_WEATHER));
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<CurrentConditionsView />, { wrapper });
+    searchNairobi();
+
+    await waitFor(() => expect(screen.getByRole("button", { name: /retry/i })).toBeDefined());
+    fireEvent.click(screen.getByRole("button", { name: /retry/i }));
+
+    await waitFor(() => expect(screen.getByRole("region", { name: "Current weather" })).toBeDefined());
+    expect(screen.getByText("Overcast")).toBeDefined();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("tolerates incomplete current values without inventing data", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        jsonResponse({
+          ...MOCK_WEATHER,
+          current: {
+            ...MOCK_WEATHER.current,
+            temperature: Number.NaN,
+            weather_description: "",
+            observed_at: null,
+          },
+        })
+      )
+    );
+    render(<CurrentConditionsView />, { wrapper });
+    searchNairobi();
+
+    await waitFor(() => expect(screen.getByRole("region", { name: "Current weather" })).toBeDefined());
+    expect(screen.getByText("Conditions unavailable")).toBeDefined();
+    expect(screen.getAllByText("Unavailable").length).toBeGreaterThan(0);
+    expect(screen.queryByText("feels like")).toBeNull();
   });
 });

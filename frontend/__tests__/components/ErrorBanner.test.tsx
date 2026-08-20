@@ -8,14 +8,15 @@ import { ErrorBanner } from "@/components/ui/ErrorBanner";
 afterEach(cleanup);
 
 describe("ErrorBanner", () => {
-  it("maps backend_unavailable to a friendly title", () => {
+  it("maps backend_unavailable to a safe 503-style message", () => {
     render(
       <ErrorBanner
         error={{ error: "backend_unavailable", message: "Backend is unreachable" }}
       />
     );
-    expect(screen.getByText("Backend unavailable")).toBeDefined();
-    expect(screen.getByText("Backend is unreachable")).toBeDefined();
+    expect(screen.getByText("Weather unavailable")).toBeDefined();
+    expect(screen.getByText(/not available right now/i)).toBeDefined();
+    expect(screen.queryByText("Backend is unreachable")).toBeNull();
   });
 
   it("maps bad_request to Invalid coordinates", () => {
@@ -25,6 +26,7 @@ describe("ErrorBanner", () => {
       />
     );
     expect(screen.getByText("Invalid coordinates")).toBeDefined();
+    expect(screen.getByText("lat must be between -90 and 90")).toBeDefined();
   });
 
   it("maps timeout to Request timed out", () => {
@@ -32,6 +34,7 @@ describe("ErrorBanner", () => {
       <ErrorBanner error={{ error: "timeout", message: "did not respond" }} />
     );
     expect(screen.getByText("Request timed out")).toBeDefined();
+    expect(screen.getByText(/too long/i)).toBeDefined();
   });
 
   it("uses a generic title for unknown codes", () => {
@@ -42,6 +45,20 @@ describe("ErrorBanner", () => {
   it("never renders the raw error code as visible text", () => {
     render(<ErrorBanner error={{ error: "backend_timeout", message: "slow" }} />);
     expect(screen.queryByText("backend_timeout")).toBeNull();
+  });
+
+  it("never renders stack traces or internal URLs", () => {
+    render(
+      <ErrorBanner
+        error={{
+          error: "mystery",
+          message: "TypeError at /app/lib/api-client.ts http://localhost:8000",
+        }}
+      />
+    );
+    expect(screen.queryByText(/api-client/)).toBeNull();
+    expect(screen.queryByText(/localhost/)).toBeNull();
+    expect(screen.getByText(/try again/i)).toBeDefined();
   });
 
   it("calls onRetry when clicked", () => {

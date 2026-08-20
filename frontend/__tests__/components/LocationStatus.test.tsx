@@ -27,7 +27,7 @@ describe("homepage shell", () => {
     render(<Home />, { wrapper });
     expect(screen.getByRole("heading", { name: "Look up the weather" })).toBeDefined();
     expect(screen.queryByRole("region", { name: "Current weather" })).toBeNull();
-    expect(screen.queryByText(/7-day forecast/i)).toBeNull();
-    expect(screen.queryByText(/hourly/i)).toBeNull();
+    expect(screen.queryByRole("region", { name: "7-day forecast" })).toBeNull();
+    expect(screen.queryByRole("region", { name: "Hourly forecast" })).toBeNull();
   });
 });
