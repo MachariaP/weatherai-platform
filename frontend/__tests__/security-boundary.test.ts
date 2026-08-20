@@ -10,6 +10,7 @@
 import { describe, it, expect } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
+import { execSync } from "node:child_process";
 
 const FRONTEND_ROOT = path.resolve(__dirname, "..");
 const SKIP_DIRS = new Set(["node_modules", ".next", "coverage", "__tests__"]);
@@ -87,5 +88,28 @@ describe("frontend security boundary", () => {
     expect(example).toMatch(/^BACKEND_URL=/m);
     expect(example).not.toMatch(/NEXT_PUBLIC_/);
     expect(example).not.toMatch(/WEATHERAI/);
+  });
+
+  it("does not commit WeatherAI credentials in git-tracked frontend files", () => {
+    const repoRoot = path.resolve(FRONTEND_ROOT, "..");
+    const listed = execSync("git ls-files -- frontend", {
+      cwd: repoRoot,
+      encoding: "utf8",
+    })
+      .split("\n")
+      .filter(Boolean);
+
+    expect(listed.length).toBeGreaterThan(0);
+    for (const relative of listed) {
+      if (relative.includes("__tests__")) continue;
+      const full = path.join(repoRoot, relative);
+      if (!fs.existsSync(full) || fs.statSync(full).isDirectory()) continue;
+      const text = fs.readFileSync(full, "utf8");
+      expect(text, relative).not.toMatch(/WEATHERAI_API_KEY/);
+      expect(text, relative).not.toMatch(/WEATHERAI_BASE_URL/);
+      expect(text, relative).not.toContain(UPSTREAM_HOST);
+      expect(text, relative).not.toMatch(/\bwai_[A-Za-z0-9]{8,}/);
+      expect(text, relative).not.toMatch(/NEXT_PUBLIC_WEATHERAI/);
+    }
   });
 });

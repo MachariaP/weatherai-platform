@@ -92,6 +92,14 @@ describe("GET /api/weather", () => {
     expect(mockFetchWeather).not.toHaveBeenCalled();
   });
 
+  it("returns 400 for non-finite coordinates", async () => {
+    const infinite = await GET(makeRequest({ lat: "Infinity", lon: "0" }));
+    expect(infinite.status).toBe(400);
+    const nanLon = await GET(makeRequest({ lat: "0", lon: "NaN" }));
+    expect(nanLon.status).toBe(400);
+    expect(mockFetchWeather).not.toHaveBeenCalled();
+  });
+
   it("returns 400 for invalid days", async () => {
     const res = await GET(makeRequest({ lat: "0", lon: "0", days: "0" }));
     expect(res.status).toBe(400);

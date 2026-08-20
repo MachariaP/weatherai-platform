@@ -253,6 +253,56 @@ describe("useWeather", () => {
     expect(result.current.isLoading).toBe(false);
   });
 
+  it("drops previous weather when coordinates change", async () => {
+    const nairobi: WeatherResponse = { ...MOCK_WEATHER, lat: -1.29, lon: 36.82 };
+    const london: WeatherResponse = { ...MOCK_WEATHER, lat: 51.5, lon: -0.12 };
+    let resolveSecond: ((value: unknown) => void) | undefined;
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValueOnce(okResponse(nairobi))
+      .mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveSecond = resolve;
+        })
+      );
+    vi.stubGlobal("fetch", mockFetch);
+
+    const { result, rerender } = renderHook(
+      ({ lat, lon }: { lat: number; lon: number }) => useWeather(lat, lon),
+      { initialProps: { lat: -1.29, lon: 36.82 } }
+    );
+
+    await waitFor(() => expect(result.current.data?.lat).toBe(-1.29));
+
+    rerender({ lat: 51.5, lon: -0.12 });
+
+    await waitFor(() => expect(result.current.data).toBeNull());
+    expect(result.current.isLoading).toBe(true);
+
+    await act(async () => {
+      resolveSecond?.(okResponse(london));
+    });
+    await waitFor(() => expect(result.current.data?.lat).toBe(51.5));
+  });
+
+  it("treats a success body that is not JSON as a malformed response", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: () => Promise.reject(new Error("Unexpected token")),
+        headers: new Headers(),
+      })
+    );
+
+    const { result } = renderHook(() => useWeather(0, 0));
+
+    await waitFor(() => expect(result.current.status).toBe("error"));
+    expect(result.current.error?.error).toBe("malformed_response");
+    expect(JSON.stringify(result.current.error)).not.toContain("Unexpected token");
+  });
+
   it("aborts the in-flight request on unmount", async () => {
     const mockFetch = vi.fn().mockReturnValue(new Promise(() => {}));
     vi.stubGlobal("fetch", mockFetch);
