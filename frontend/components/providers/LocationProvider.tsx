@@ -9,13 +9,13 @@ import {
 } from "react";
 import { formatCoordinates } from "@/lib/format";
 
-interface Location {
+export interface Location {
   lat: number;
   lon: number;
   label: string;
 }
 
-interface LocationContextValue {
+export interface LocationContextValue {
   location: Location | null;
   setLocation: (loc: Location) => void;
   detectLocation: () => void;
@@ -25,10 +25,22 @@ interface LocationContextValue {
 
 const LocationContext = createContext<LocationContextValue | null>(null);
 
+/**
+ * Selected-location state for the dashboard.
+ *
+ * Holds coordinates only. Weather fetching belongs to useWeather via
+ * GET /api/weather — this provider never calls WeatherAI or FastAPI.
+ */
 export function LocationProvider({ children }: { children: ReactNode }) {
-  const [location, setLocation] = useState<Location | null>(null);
+  const [location, setLocationState] = useState<Location | null>(null);
   const [detecting, setDetecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const setLocation = useCallback((loc: Location) => {
+    setLocationState(loc);
+    setError(null);
+    setDetecting(false);
+  }, []);
 
   const detectLocation = useCallback(() => {
     if (!navigator.geolocation) {
@@ -46,7 +58,6 @@ export function LocationProvider({ children }: { children: ReactNode }) {
           lon,
           label: formatCoordinates(lat, lon),
         });
-        setDetecting(false);
       },
       (err) => {
         setError(err.message);
@@ -54,7 +65,7 @@ export function LocationProvider({ children }: { children: ReactNode }) {
       },
       { timeout: 10000 }
     );
-  }, []);
+  }, [setLocation]);
 
   return (
     <LocationContext.Provider
