@@ -9,6 +9,7 @@ import {
   formatTime,
   formatDate,
   formatPrecip,
+  formatForecastDate,
 } from "@/lib/format";
 
 describe("formatTemp", () => {
@@ -86,9 +87,29 @@ describe("formatTime / formatDate", () => {
 });
 
 describe("formatPrecip", () => {
-  it("renders millimeters honestly", () => {
+  it("renders millimeters for metric", () => {
     expect(formatPrecip(2)).toBe("2 mm");
     expect(formatPrecip(0.3)).toBe("0.3 mm");
     expect(formatPrecip(0)).toBe("");
+  });
+
+  it("renders inches for imperial without converting the value", () => {
+    expect(formatPrecip(0.3, "imperial")).toBe("0.3 in");
+    expect(formatPrecip(2, "imperial")).toBe("2 in");
+  });
+
+  it("omits non-finite precipitation", () => {
+    expect(formatPrecip(Number.NaN)).toBe("");
+  });
+});
+
+describe("formatForecastDate", () => {
+  it("formats a calendar date", () => {
+    expect(formatForecastDate("2026-08-20")).toBe("Aug 20");
+  });
+
+  it("returns null for missing or invalid dates", () => {
+    expect(formatForecastDate("")).toBeNull();
+    expect(formatForecastDate("not-a-date")).toBeNull();
   });
 });

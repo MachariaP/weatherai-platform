@@ -92,8 +92,8 @@ describe("CurrentConditionsView", () => {
     expect(screen.getByText("Overcast")).toBeDefined();
     expect(screen.getByText("20")).toBeDefined();
     expect(screen.getByRole("region", { name: "Current weather" }).textContent).toContain("°C");
-    expect(screen.queryByText(/7-day/i)).toBeNull();
-    expect(screen.queryByText(/hourly/i)).toBeNull();
+    expect(screen.getByText("Hourly forecast is not available.")).toBeDefined();
+    expect(screen.getByText("Daily forecast is not available.")).toBeDefined();
   });
 
   it("omits AI insight when the preference is off", async () => {
@@ -160,11 +160,50 @@ describe("CurrentConditionsView", () => {
     expect(screen.getByText("Current weather is unavailable")).toBeDefined();
   });
 
-  it("does not render forecast or hourly sections", async () => {
+  it("renders hourly and 7-day outlook from the public arrays", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        jsonResponse({
+          ...MOCK_WEATHER,
+          daily: [
+            {
+              date: "2026-08-21",
+              temp_max: 26,
+              temp_min: 16,
+              precipitation: 1,
+              weather_code: 1,
+              weather_description: "Mainly clear",
+            },
+          ],
+          hourly: [
+            {
+              time: "2026-08-20T15:00",
+              temperature: 23,
+              precipitation: 0,
+              weather_code: 1,
+              weather_description: "Mainly clear",
+            },
+          ],
+        })
+      )
+    );
+    render(<CurrentConditionsView />, { wrapper });
+    searchNairobi();
+
+    await waitFor(() => expect(screen.getByRole("region", { name: "Hourly forecast" })).toBeDefined());
+    expect(screen.getByRole("region", { name: "7-day forecast" })).toBeDefined();
+    expect(screen.getByText("23°")).toBeDefined();
+    expect(screen.getByText("26°")).toBeDefined();
+    expect(screen.queryByText("Hourly forecast is not available.")).toBeNull();
+    expect(screen.queryByText("Daily forecast is not available.")).toBeNull();
+  });
+
+  it("shows forecast fallbacks when daily and hourly arrays are empty", async () => {
     render(<CurrentConditionsView />, { wrapper });
     searchNairobi();
     await waitFor(() => expect(screen.getByText("Overcast")).toBeDefined());
-    expect(screen.queryByRole("region", { name: /forecast/i })).toBeNull();
-    expect(screen.queryByRole("region", { name: /hourly/i })).toBeNull();
+    expect(screen.getByText("Hourly forecast is not available.")).toBeDefined();
+    expect(screen.getByText("Daily forecast is not available.")).toBeDefined();
   });
 });
