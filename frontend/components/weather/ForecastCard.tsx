@@ -51,7 +51,7 @@ export function ForecastCard({ day, units }: Props) {
       {isToday ? (
         <span
           aria-hidden="true"
-          className="absolute left-0 hidden h-full w-1 rounded-r-full bg-accent lg:block"
+          className="absolute left-0 h-full w-1 rounded-r-full bg-accent"
         />
       ) : null}
       <p

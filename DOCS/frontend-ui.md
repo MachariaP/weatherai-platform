@@ -134,8 +134,8 @@ location label. Subtitle is always `lat, lon` at 4 decimals.
 
 Landmarks (`header`, `main`, `footer`, labeled `nav`s), skip link,
 visible `:focus-visible` rings, labeled inputs, `role="switch"` / 
-`aria-pressed` on toggles. Bottom nav is `md:hidden`; desktop Dashboard /
-Forecast live in the header.
+`aria-pressed` on toggles. Bottom nav is `lg:hidden` so tablet keeps
+touch tabs; desktop Dashboard / Forecast live in the header from `lg` up.
 
 ## Deliberate constraints
 

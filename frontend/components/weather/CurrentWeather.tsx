@@ -118,7 +118,7 @@ export function CurrentWeather({
         ) : null}
       </header>
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-[minmax(0,1.35fr)_minmax(16rem,1fr)]">
         <div className="relative min-h-[200px] overflow-hidden rounded-card border border-border bg-surface p-4">
           <div className="relative z-10 mb-6 flex items-center justify-between gap-3">
             <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-text-muted">

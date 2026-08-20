@@ -346,7 +346,7 @@ describe("CurrentConditionsView", () => {
   it("renders a mobile bottom nav with the dashboard views", async () => {
     render(<CurrentConditionsView />, { wrapper });
     const nav = screen.getByRole("navigation", { name: "Mobile views" });
-    expect(nav.className).toMatch(/md:hidden/);
+    expect(nav.className).toMatch(/lg:hidden/);
     expect(screen.getAllByRole("button", { name: "Dashboard" }).length).toBeGreaterThan(0);
     expect(screen.getAllByRole("button", { name: "Forecast" }).length).toBeGreaterThan(0);
     expect(screen.getByRole("button", { name: "AI Insights" })).toBeDefined();

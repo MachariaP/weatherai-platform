@@ -16,7 +16,7 @@ export function BottomNav() {
   return (
     <nav
       aria-label="Mobile views"
-      className="md:hidden fixed bottom-0 z-50 w-full border-t border-border bg-surface pb-[env(safe-area-inset-bottom)]"
+      className="lg:hidden fixed bottom-0 z-50 w-full border-t border-border bg-surface pb-[env(safe-area-inset-bottom)]"
     >
       <div className="flex h-16 items-center justify-around">
         {TABS.map((tab) => {

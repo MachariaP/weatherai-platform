@@ -71,7 +71,7 @@ export function HourlyScroll({ hours, units }: Props) {
   }, [hours]);
 
   return (
-    <section aria-label="Hourly forecast">
+    <section aria-label="Hourly forecast" className="min-w-0 max-w-full">
       <h2 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-text-muted">
         Hourly outlook
       </h2>
@@ -86,7 +86,7 @@ export function HourlyScroll({ hours, units }: Props) {
           tabIndex={0}
           aria-label="Hourly forecast times"
           onKeyDown={handleScrollKeys}
-          className="focus-ring -mx-4 flex gap-4 overflow-x-auto px-4 pb-2 scroll-slim sm:-mx-6 sm:px-6 md:mx-0 md:px-0 md:pb-0"
+          className="focus-ring -mx-4 w-[calc(100%+2rem)] min-w-0 overflow-x-auto px-4 pb-2 scroll-slim sm:-mx-6 sm:w-[calc(100%+3rem)] sm:px-6 md:mx-0 md:w-full md:px-0 md:pb-0 flex gap-4"
         >
           {rows.map((hour, index) => {
             const now = index === nowIndex;

@@ -124,13 +124,13 @@ export function CurrentConditionsView() {
       {error ? <ErrorBanner error={error} onRetry={refetch} /> : null}
       {refreshBar}
 
-      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-12">
-        <div className="flex flex-col gap-8 lg:col-span-8">
+      <div className="grid min-w-0 grid-cols-1 items-start gap-4 md:grid-cols-12">
+        <div className="flex min-w-0 flex-col gap-8 md:col-span-8">
           {hero}
           <HourlyScroll hours={data.hourly} units={units} />
         </div>
 
-        <aside className="flex flex-col gap-8 border-t border-border pt-8 lg:col-span-4 lg:border-l lg:border-t-0 lg:pl-8 lg:pt-0">
+        <aside className="flex min-w-0 flex-col gap-8 border-t border-border pt-8 md:col-span-4 md:border-l md:border-t-0 md:pl-8 md:pt-0">
           <AISummary
             enabled={aiEnabled}
             summary={data.ai_summary}

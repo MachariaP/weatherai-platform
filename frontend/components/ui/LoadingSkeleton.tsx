@@ -15,7 +15,7 @@ export function CurrentWeatherSkeleton() {
         <Pulse className="h-9 w-56 sm:w-72" />
         <Pulse className="h-3.5 w-36" />
       </div>
-      <div className="grid gap-3 lg:grid-cols-[minmax(0,1.35fr)_minmax(16rem,1fr)]">
+      <div className="grid gap-3 md:grid-cols-[minmax(0,1.35fr)_minmax(16rem,1fr)]">
         <div className="rounded-card border border-border bg-surface p-5">
           <div className="mb-6 flex items-center justify-between">
             <Pulse className="h-3 w-32" />
@@ -69,7 +69,7 @@ export function HourlySkeleton() {
         {Array.from({ length: 8 }).map((_, i) => (
           <div
             key={i}
-            className="w-[4.5rem] shrink-0 space-y-2.5 rounded-card border border-border bg-surface px-2 py-3"
+            className="w-20 shrink-0 space-y-2.5 rounded-card border border-border bg-surface px-2 py-3"
           >
             <Pulse className="mx-auto h-3 w-8" />
             <Pulse className="mx-auto h-6 w-6 rounded-full" />
@@ -111,12 +111,12 @@ export function WeatherLoading({ showAi = false, forecastDays = 7 }: WeatherLoad
       className="space-y-6 pt-2 sm:space-y-8"
     >
       <p className="sr-only">Loading weather</p>
-      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-12">
-        <div className="space-y-8 lg:col-span-8">
+      <div className="grid min-w-0 grid-cols-1 items-start gap-4 md:grid-cols-12">
+        <div className="min-w-0 space-y-8 md:col-span-8">
           <CurrentWeatherSkeleton />
           <HourlySkeleton />
         </div>
-        <div className="space-y-8 lg:col-span-4">
+        <div className="min-w-0 space-y-8 border-t border-border pt-8 md:col-span-4 md:border-l md:border-t-0 md:pl-8 md:pt-0">
           {showAi ? <AiSummarySkeleton /> : null}
           <ForecastSkeleton days={forecastDays} />
         </div>
