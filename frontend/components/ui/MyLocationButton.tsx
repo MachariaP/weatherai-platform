@@ -11,6 +11,7 @@ export function MyLocationButton({ className = "" }: { className?: string }) {
       type="button"
       onClick={detectLocation}
       disabled={detecting}
+      aria-busy={detecting}
       aria-label="Use my location"
       title="Use my location"
       className={`focus-ring inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl border border-border bg-surface px-3 text-sm font-medium text-text-secondary shadow-card transition-colors hover:border-border-strong hover:text-text disabled:opacity-60 ${className}`}

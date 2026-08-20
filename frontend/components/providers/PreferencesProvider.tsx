@@ -45,6 +45,14 @@ function subscribeAi(cb: () => void) {
   };
 }
 
+function getServerUnits(): Units {
+  return "metric";
+}
+
+function getServerAi(): boolean {
+  return false;
+}
+
 /**
  * User display preferences.
  *
@@ -52,8 +60,8 @@ function subscribeAi(cb: () => void) {
  * because upstream AI data is optional and quota-limited.
  */
 export function PreferencesProvider({ children }: { children: ReactNode }) {
-  const units = useSyncExternalStore(subscribeUnits, getStoredUnits, () => "metric" as Units);
-  const aiEnabled = useSyncExternalStore(subscribeAi, getStoredAi, () => false);
+  const units = useSyncExternalStore(subscribeUnits, getStoredUnits, getServerUnits);
+  const aiEnabled = useSyncExternalStore(subscribeAi, getStoredAi, getServerAi);
 
   const setUnits = useCallback((u: Units) => {
     localStorage.setItem("units", u);

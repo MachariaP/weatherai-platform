@@ -60,7 +60,7 @@ export function LocationProvider({ children }: { children: ReactNode }) {
         });
       },
       (err) => {
-        setError(err.message);
+        setError(geolocationErrorMessage(err.code));
         setDetecting(false);
       },
       { timeout: 10000 }
@@ -74,6 +74,19 @@ export function LocationProvider({ children }: { children: ReactNode }) {
       {children}
     </LocationContext.Provider>
   );
+}
+
+export function geolocationErrorMessage(code: number): string {
+  switch (code) {
+    case 1:
+      return "Location permission was denied";
+    case 2:
+      return "Your position is currently unavailable";
+    case 3:
+      return "Location request timed out";
+    default:
+      return "Could not determine your location";
+  }
 }
 
 export function useLocation(): LocationContextValue {

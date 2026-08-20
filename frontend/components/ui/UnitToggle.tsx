@@ -14,6 +14,7 @@ export function UnitToggle() {
       <button
         type="button"
         aria-pressed={units === "metric"}
+        aria-label="Celsius"
         onClick={() => setUnits("metric")}
         title="Celsius"
         className="focus-ring rounded-lg px-2 py-1.5 text-sm font-semibold text-text-muted transition-colors hover:text-text aria-pressed:bg-accent aria-pressed:text-background sm:px-2.5"
@@ -23,6 +24,7 @@ export function UnitToggle() {
       <button
         type="button"
         aria-pressed={units === "imperial"}
+        aria-label="Fahrenheit"
         onClick={() => setUnits("imperial")}
         title="Fahrenheit"
         className="focus-ring rounded-lg px-2 py-1.5 text-sm font-semibold text-text-muted transition-colors hover:text-text aria-pressed:bg-accent aria-pressed:text-background sm:px-2.5"
