@@ -20,6 +20,7 @@ from app.errors import (
     WeatherAIServerError,
     WeatherAIUnavailableError,
 )
+from app.observability import log_event
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +50,13 @@ async def with_retry(
             last_error = exc
             if attempt < max_attempts - 1:
                 delay = backoff_base * (4 ** attempt)
+                log_event(
+                    "weatherai_retry",
+                    attempt=attempt + 1,
+                    max_attempts=max_attempts,
+                    error_type=type(exc).__name__,
+                    delay_s=delay,
+                )
                 logger.warning(
                     "Upstream %s on attempt %d/%d, retrying in %.1fs",
                     type(exc).__name__,
@@ -58,6 +66,12 @@ async def with_retry(
                 )
                 await asyncio.sleep(delay)
             else:
+                log_event(
+                    "weatherai_retry_exhausted",
+                    attempt=attempt + 1,
+                    max_attempts=max_attempts,
+                    error_type=type(exc).__name__,
+                )
                 logger.error(
                     "Upstream %s on final attempt %d/%d, giving up",
                     type(exc).__name__,

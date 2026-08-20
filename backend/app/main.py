@@ -10,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
 from app.models import HealthResponse
+from app.observability import RequestContextMiddleware
 from app.routes.geocode import router as geocode_router
 from app.routes.weather import router as weather_router
 
@@ -27,6 +28,7 @@ app.add_middleware(
     allow_methods=["GET"],
     allow_headers=["*"],
 )
+app.add_middleware(RequestContextMiddleware)
 
 app.include_router(weather_router)
 app.include_router(geocode_router)

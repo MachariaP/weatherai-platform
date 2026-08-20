@@ -10,6 +10,7 @@ Retry is composed in via the separate retry wrapper.
 """
 from __future__ import annotations
 
+import time
 from typing import Any
 
 import httpx
@@ -25,6 +26,7 @@ from app.errors import (
     WeatherAITimeoutError,
     WeatherAIUnavailableError,
 )
+from app.observability import log_event
 
 
 class RateLimitInfo:
@@ -118,6 +120,9 @@ class WeatherAIClient:
     ) -> UpstreamResponse:
         """Execute a single GET request against the upstream API."""
         url = self._build_url(path)
+        started = time.monotonic()
+        upstream_status: int | None = None
+        error_type: str | None = None
 
         try:
             async with httpx.AsyncClient(timeout=self._timeout) as http:
@@ -126,29 +131,83 @@ class WeatherAIClient:
                     params=params,
                     headers=self._auth_headers(),
                 )
+            upstream_status = response.status_code
         except httpx.TimeoutException as exc:
+            error_type = "timeout"
+            log_event(
+                "weatherai_request",
+                upstream="weatherai",
+                upstream_status=None,
+                upstream_duration_ms=round((time.monotonic() - started) * 1000, 1),
+                error_type=error_type,
+            )
             raise WeatherAITimeoutError(
                 f"WeatherAI did not respond within {self._timeout}s",
                 status_code=None,
             ) from exc
+        except httpx.RequestError as exc:
+            error_type = "network"
+            log_event(
+                "weatherai_request",
+                upstream="weatherai",
+                upstream_status=None,
+                upstream_duration_ms=round((time.monotonic() - started) * 1000, 1),
+                error_type=error_type,
+            )
+            raise WeatherAIUnavailableError(
+                "WeatherAI network error",
+                status_code=None,
+            ) from exc
 
+        duration_ms = round((time.monotonic() - started) * 1000, 1)
         rate_limit = RateLimitInfo.from_headers(response.headers)
-        self._raise_for_status(response, rate_limit)
+
+        try:
+            self._raise_for_status(response, rate_limit)
+        except Exception as exc:
+            log_event(
+                "weatherai_request",
+                upstream="weatherai",
+                upstream_status=upstream_status,
+                upstream_duration_ms=duration_ms,
+                error_type=type(exc).__name__,
+            )
+            raise
 
         try:
             data = response.json()
         except Exception as exc:
+            log_event(
+                "weatherai_request",
+                upstream="weatherai",
+                upstream_status=upstream_status,
+                upstream_duration_ms=duration_ms,
+                error_type="malformed",
+            )
             raise WeatherAIMalformedResponseError(
                 "WeatherAI returned 200 but body is not valid JSON",
                 status_code=200,
             ) from exc
 
         if not isinstance(data, dict):
+            log_event(
+                "weatherai_request",
+                upstream="weatherai",
+                upstream_status=upstream_status,
+                upstream_duration_ms=duration_ms,
+                error_type="malformed",
+            )
             raise WeatherAIMalformedResponseError(
                 f"Expected JSON object, got {type(data).__name__}",
                 status_code=200,
             )
 
+        log_event(
+            "weatherai_request",
+            upstream="weatherai",
+            upstream_status=upstream_status,
+            upstream_duration_ms=duration_ms,
+        )
         return UpstreamResponse(data=data, rate_limit=rate_limit)
 
     @staticmethod
