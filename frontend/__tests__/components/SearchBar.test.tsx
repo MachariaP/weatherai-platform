@@ -156,4 +156,16 @@ describe("SearchBar", () => {
     fireEvent.click(screen.getByRole("button", { name: "Get Weather" }));
     expect(screen.getByText("lat:-1.2921 lon:36.8219")).toBeDefined();
   });
+
+  it("selects a highlighted suggestion with Enter", async () => {
+    nairobiFetch([{ lat: -1.2864, lon: 36.8172, label: "Nairobi, Kenya" }]);
+    renderSearch();
+    const input = screen.getByLabelText("Location or coordinates");
+    fireEvent.change(input, { target: { value: "Nairobi" } });
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 350));
+    });
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(screen.getByText("lat:-1.2864 lon:36.8172")).toBeDefined();
+  });
 });
