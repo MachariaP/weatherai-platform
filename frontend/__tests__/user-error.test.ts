@@ -2,6 +2,24 @@ import { describe, it, expect } from "vitest";
 import { userFacingError } from "@/lib/user-error";
 
 describe("userFacingError", () => {
+  it("maps application rate_limited separately from upstream quota", () => {
+    const copy = userFacingError({
+      error: "rate_limited",
+      message: "Too many requests. Please try again shortly.",
+    });
+    expect(copy.title).toBe("Too many requests");
+    expect(copy.body).toMatch(/shortly/i);
+  });
+
+  it("maps circuit-open upstream_unavailable without internals", () => {
+    const copy = userFacingError({
+      error: "upstream_unavailable",
+      message: "Weather service is temporarily unavailable.",
+    });
+    expect(copy.title).toBe("Weather unavailable");
+    expect(copy.body).not.toMatch(/circuit/i);
+  });
+
   it("maps 503-style backend unavailability", () => {
     const copy = userFacingError({
       error: "backend_unavailable",

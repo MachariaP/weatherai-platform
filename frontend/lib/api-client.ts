@@ -23,8 +23,8 @@ const BACKEND_TIMEOUT_MS = 8_000;
 const GEOCODE_TIMEOUT_MS = 15_000;
 
 export type WeatherResult =
-  | { ok: true; data: WeatherResponse; cacheStatus: string | null }
-  | { ok: false; status: number; error: WeatherError };
+  | { ok: true; data: WeatherResponse; cacheStatus: string | null; requestId?: string | null }
+  | { ok: false; status: number; error: WeatherError; requestId?: string | null };
 
 function getBackendUrl(): string | undefined {
   const url = process.env.BACKEND_URL;
@@ -39,15 +39,16 @@ function isTimeoutError(err: unknown): boolean {
   return name === "AbortError" && message.includes("timeout");
 }
 
-function unavailable(): WeatherResult {
+function unavailable(requestId: string | null = null): WeatherResult {
   return {
     ok: false,
     status: 503,
     error: { error: "backend_unavailable", message: "Backend is unreachable" },
+    requestId,
   };
 }
 
-function timeout(): WeatherResult {
+function timeout(requestId: string | null = null): WeatherResult {
   return {
     ok: false,
     status: 504,
@@ -55,10 +56,11 @@ function timeout(): WeatherResult {
       error: "backend_timeout",
       message: "Backend did not respond in time",
     },
+    requestId,
   };
 }
 
-function malformed(): WeatherResult {
+function malformed(requestId: string | null = null): WeatherResult {
   return {
     ok: false,
     status: 502,
@@ -66,6 +68,7 @@ function malformed(): WeatherResult {
       error: "malformed_response",
       message: "Backend returned an unexpected response",
     },
+    requestId,
   };
 }
 
@@ -104,11 +107,12 @@ function isWeatherResponse(value: unknown): value is WeatherResponse {
 }
 
 export async function fetchWeather(
-  params: WeatherParams
+  params: WeatherParams,
+  requestId?: string
 ): Promise<WeatherResult> {
   const backendUrl = getBackendUrl();
   if (!backendUrl) {
-    return unavailable();
+    return unavailable(requestId ?? null);
   }
 
   const url = new URL("/weather", backendUrl);
@@ -120,18 +124,23 @@ export async function fetchWeather(
   if (params.units !== undefined) url.searchParams.set("units", params.units);
   if (params.lang !== undefined) url.searchParams.set("lang", params.lang);
 
+  const outboundHeaders = requestId ? { "X-Request-ID": requestId } : undefined;
+
   let res: Response;
   try {
     res = await fetch(url.toString(), {
       cache: "no-store",
       signal: AbortSignal.timeout(BACKEND_TIMEOUT_MS),
+      headers: outboundHeaders,
     });
   } catch (err) {
     if (isTimeoutError(err)) {
-      return timeout();
+      return timeout(requestId ?? null);
     }
-    return unavailable();
+    return unavailable(requestId ?? null);
   }
+
+  const echoed = res.headers.get("x-request-id") ?? requestId ?? null;
 
   let body: unknown;
   try {
@@ -142,9 +151,10 @@ export async function fetchWeather(
         ok: false,
         status: res.status,
         error: { error: "unknown", message: `Backend returned ${res.status}` },
+        requestId: echoed,
       };
     }
-    return malformed();
+    return malformed(echoed);
   }
 
   if (!res.ok) {
@@ -152,17 +162,19 @@ export async function fetchWeather(
       ok: false,
       status: res.status,
       error: parseErrorBody(res.status, body),
+      requestId: echoed,
     };
   }
 
   if (!isWeatherResponse(body)) {
-    return malformed();
+    return malformed(echoed);
   }
 
   return {
     ok: true,
     data: body,
     cacheStatus: res.headers.get("x-cache"),
+    requestId: echoed,
   };
 }
 

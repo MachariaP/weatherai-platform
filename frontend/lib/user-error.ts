@@ -5,6 +5,8 @@ const TITLES: Record<string, string> = {
   upstream_auth: "Weather unavailable",
   plan_restriction: "AI insight unavailable",
   rate_limit: "Weather service is busy",
+  rate_limited: "Too many requests",
+  upstream_unavailable: "Weather unavailable",
   upstream_error: "Weather unavailable",
   malformed_response: "Weather data incomplete",
   timeout: "Request timed out",
@@ -19,6 +21,9 @@ const BODIES: Record<string, string> = {
   upstream_auth: "Weather lookup is temporarily unavailable. Try again later.",
   plan_restriction: "AI insight is not available for this request.",
   rate_limit: "Too many requests. Wait a moment and try again.",
+  rate_limited: "Too many requests. Please try again shortly.",
+  upstream_unavailable:
+    "The weather service is not available right now. Try again in a moment.",
   upstream_error:
     "The weather service is not available right now. Try again in a moment.",
   malformed_response:

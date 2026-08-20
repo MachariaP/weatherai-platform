@@ -148,6 +148,18 @@ describe("GET /api/weather", () => {
     expect(res.headers.get("X-Cache")).toBe("HIT");
   });
 
+  it("always sets X-Request-ID", async () => {
+    mockFetchWeather.mockResolvedValue({
+      ok: true,
+      data: MOCK_WEATHER,
+      cacheStatus: "MISS",
+      requestId: "frontend-trace-id-01",
+    });
+
+    const res = await GET(makeRequest({ lat: "0", lon: "0" }));
+    expect(res.headers.get("X-Request-ID")).toBe("frontend-trace-id-01");
+  });
+
   it("sets Cache-Control: no-store so Next.js does not cache weather", async () => {
     mockFetchWeather.mockResolvedValue({
       ok: true,
@@ -185,14 +197,17 @@ describe("GET /api/weather", () => {
       })
     );
 
-    expect(mockFetchWeather).toHaveBeenCalledWith({
-      lat: 0,
-      lon: 0,
-      days: 3,
-      ai: true,
-      units: "imperial",
-      lang: "es",
-    });
+    expect(mockFetchWeather).toHaveBeenCalledWith(
+      {
+        lat: 0,
+        lon: 0,
+        days: 3,
+        ai: true,
+        units: "imperial",
+        lang: "es",
+      },
+      expect.any(String)
+    );
   });
 
   // ---- Error propagation (actual FastAPI public contract) ----
