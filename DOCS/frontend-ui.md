@@ -50,14 +50,18 @@ supporting: BottomNav, SiteFooter, ErrorBanner, LoadingSkeleton, icons
 - `LocationProvider` — `{ lat, lon, label }` is the single client location
   source of truth. **Identity is coordinates.** Labels are presentation.
   Recents (max 8) persist in `localStorage` (`weatherai:recent-locations`)
-  and never store weather payloads. Canonical URL is `/?lat=&lon=`.
+  and never store weather payloads. Saved places (max 20) persist separately
+  (`weatherai:favorite-locations`): explicit star, coordinate identity, no
+  account. Selecting a favorite updates LocationProvider, the canonical URL,
+  and recents, and does not geocode again. Canonical URL is `/?lat=&lon=`.
   Invalid URL coordinates set a safe error and do not fetch weather.
-- `PreferencesProvider` — `units` and `aiEnabled`, persisted to
-  `localStorage` (`units`, `ai` keys). AI stays disabled by default.
+- `PreferencesProvider` — `units`, `aiEnabled`, and `forecastDays` (3/5/7,
+  default 7), persisted to `localStorage` (`units`, `ai`, `forecastDays`).
+  AI stays disabled by default. Forecast range is not encoded in the URL.
 - `ViewProvider` — dashboard / forecast / insights / settings. One weather
   payload; views only change layout.
-- `useWeather` — fetches `/api/weather?lat&lon&units&ai`, clears data when
-  coordinates change, exposes `refetch`.
+- `useWeather` — fetches `/api/weather?lat&lon&units&days&ai`, clears data when
+  coordinates **or** units/AI/days change, exposes `refetch`.
 
 City search: the browser calls **`GET /api/geocode?q=`** only. Combined
 input parses `lat, lon` locally when both tokens are numbers; otherwise it
@@ -104,8 +108,8 @@ Inter via `next/font` (`--font-inter`). Hierarchy:
 - **Error** — classified titles, user-safe messages, Retry. No internals.
 - **Loaded dashboard** — 8-col current+hourly, 4-col AI+7-day.
 - **Forecast / AI Insights / Settings** — same payload, different layout.
-  Settings is units + AI toggle only (no extra backend). Units and AI
-are not duplicated in the header.
+  Settings is units, forecast range (3/5/7), AI toggle, and saved places
+  (no extra backend). Those controls are not duplicated in the header.
 
 ## Metric tiles (hide missing)
 

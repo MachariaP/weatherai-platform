@@ -22,8 +22,9 @@ Phase-by-phase plan for the WeatherAI QA project.
   amounts (zero is data; missing is not zero) and a last-updated / Refresh
   control that respects the FastAPI TTL cache.
 - **Phase C (browser E2E + CI build gate)** — Playwright journeys against
-  mocked `/api/*`, plus `npm run build` in CI. Later phases are not in this
-  increment.
+  mocked `/api/*`, plus `npm run build` in CI.
+- **Phase D (forecast range + saved places)** — UI for existing `days`, and
+  local favorites. Later phases are not in this increment.
 
 ---
 
@@ -101,3 +102,9 @@ Phase-by-phase plan for the WeatherAI QA project.
 - Playwright Chromium (+ one mobile viewport) against mocked Next.js `/api/*`
 - CI production build gate and a separate Playwright job
 - Live WeatherAI acceptance remains manual — see `testing.md`
+
+## Phase D: Forecast range + saved places
+
+- Forecast range preference (3/5/7 days, default 7) using existing FastAPI `days`
+- Local saved places (`localStorage`, max 20, coordinate identity)
+- No backend product change; extra pytest coverage that `days` is part of the cache key

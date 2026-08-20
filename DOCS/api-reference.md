@@ -14,6 +14,10 @@ and never call WeatherAI, Photon, or the IP-lookup provider.
 | `lat` | Yes | number | — | -90 to 90 |
 | `lon` | Yes | number | — | -180 to 180 |
 | `days` | No | number | 7 | 1–7 |
+
+The UI exposes **3 / 5 / 7** days as a persisted viewing preference
+(`forecastDays`). FastAPI remains authoritative for the 1–7 range. `days` is
+not added to the shareable location URL.
 | `units` | No | string | `metric` | `metric` or `imperial` |
 | `ai` | No | string | `false` | `true` or `false` |
 | `lang` | No | string | `en` (FastAPI) | Language code passed through to WeatherAI |

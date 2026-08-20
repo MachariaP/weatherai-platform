@@ -75,6 +75,13 @@ and by Vitest abort/request-id checks in `useWeather`. Browser coverage is
 kept to one delayed-fulfillment journey rather than a three-way A→B→C
 timing matrix.
 
+Phase D adds representative Playwright journeys for:
+
+- forecast range 7 → 3 (`days=3` on `/api/weather`, three returned daily rows)
+- saved place: save Nairobi, visit London, return via Saved (no extra geocode)
+
+Lower-level storage, limit, and preference fallback details stay in Vitest.
+
 Playwright is a **separate CI job** from lint/Vitest/`tsc` so Chromium install
 does not slow the unit job. Failed CI runs upload `test-results/` and
 `playwright-report/` (screenshots + traces). Successful runs do not keep video.

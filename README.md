@@ -83,13 +83,15 @@ every push and pull request. See `DOCS/testing.md`.
 ## Features
 
 - Current weather with temperature, wind, and conditions
-- 7-day forecast and hourly outlook with precipitation amounts when available
+- 7-day forecast by default, with 3- or 5-day range in Settings / forecast header
+- Hourly outlook with precipitation amounts when available
 - Observed time and Refresh (revalidates through FastAPI cache; does not force WeatherAI)
 - Place-name search with multiple suggestions (Photon via FastAPI)
 - Recent locations (localStorage, max 8; weather payloads are never stored)
+- Saved places (localStorage, max 20, explicit star; coordinates only; no account)
 - Shareable `/?lat=&lon=` URLs (coordinates are canonical)
 - Browser geolocation with IP approximation when GPS is unavailable
-- Metric/imperial and AI insight preferences (Settings, `localStorage`)
+- Metric/imperial, forecast range (3/5/7 days), and AI insight preferences (Settings, `localStorage`)
 - Cache HIT/MISS indicator
 - AI summary display when the upstream provides one (`ai_summary` may be null)
 - Loading skeletons, empty state, and classified errors with retry
@@ -116,6 +118,8 @@ Query parameters: `lat` (required), `lon` (required), `days` (1-7),
 - **City search via Photon**: WeatherAI Free is coordinates-only. FastAPI geocodes place names with OpenStreetMap Photon, then calls `/v1/weather` with lat/lon. The browser never talks to Photon or WeatherAI.
 - **Coordinates are identity**: shareable URLs are `/?lat=&lon=`. Place names are not the weather key.
 - **Recent locations**: `localStorage` only (max 8). Weather payloads are never stored there.
+- **Saved places**: `localStorage` only (max 20). Explicit save/remove. Coordinates are identity. No account or cloud sync. Selecting a saved place is a normal location visit (it also enters recents).
+- **Forecast range**: UI options 3/5/7 days (default 7), persisted as `forecastDays`. Not part of the shareable URL. FastAPI already validates `days` 1–7 and includes it in the cache key.
 - **IP geolocation**: used only after GPS fails without a permission denial. FastAPI calls the lookup provider; the browser never sees that URL or the IP.
 - **Hide missing metrics**: humidity, UV, pressure, feels-like, 24h precip, and
   daily/hourly precipitation amounts render only when FastAPI sent a legitimate

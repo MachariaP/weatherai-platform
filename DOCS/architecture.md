@@ -124,8 +124,14 @@ convenience: it must resolve to `lat` + `lon` before weather is fetched.
 | Not an identity | `?q=Nairobi` |
 
 Recent locations are **browser `localStorage` only** (`weatherai:recent-locations`):
-about 8 entries, newest first, `{ lat, lon, label }`. Weather payloads are never
-stored there. There is no server persistence, database, or Redis for recents.
+about 8 entries, newest first, `{ lat, lon, label }`. Saved places are a separate
+store (`weatherai:favorite-locations`, max 20): explicit, not reordered on visit,
+never silently evicted. Neither store holds weather payloads, units, AI, or
+`days`. There is no server persistence, database, or Redis for recents or favorites.
+
+Forecast range is a viewing preference (`localStorage` `forecastDays`, default 7,
+UI options 3/5/7). It is sent as FastAPI `days` and is **not** added to the
+shareable `/?lat=&lon=` URL.
 
 `LocationProvider` is the single client-side location source of truth. Search,
 recents, GPS/IP, and the URL all write through it; the URL is synchronized only
