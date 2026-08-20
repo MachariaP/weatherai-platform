@@ -1,0 +1,86 @@
+"""Geocode routes — Photon via FastAPI, never exposed as WeatherAI."""
+from __future__ import annotations
+
+from typing import Annotated
+
+from fastapi import APIRouter, Query, Request
+from fastapi.responses import JSONResponse
+
+from app.geocode import (
+    GeocodeError,
+    GeocodeNotFoundError,
+    GeocodeTimeoutError,
+    GeocodeUnavailableError,
+    locate_by_ip,
+    reverse_place,
+    search_place,
+)
+
+router = APIRouter()
+
+
+@router.get("/geocode")
+async def geocode(q: Annotated[str, Query(min_length=1, max_length=200)]) -> JSONResponse:
+    try:
+        result = await search_place(q)
+    except GeocodeNotFoundError as exc:
+        return JSONResponse(
+            status_code=404,
+            content={"error": "not_found", "message": str(exc)},
+        )
+    except GeocodeTimeoutError:
+        return JSONResponse(
+            status_code=504,
+            content={"error": "timeout", "message": "Location search timed out"},
+        )
+    except (GeocodeUnavailableError, GeocodeError):
+        return JSONResponse(
+            status_code=503,
+            content={"error": "geocode_unavailable", "message": "Location search is unavailable"},
+        )
+    return JSONResponse(content=result)
+
+
+@router.get("/reverse")
+async def reverse(
+    lat: Annotated[float, Query(ge=-90, le=90)],
+    lon: Annotated[float, Query(ge=-180, le=180)],
+) -> JSONResponse:
+    label = await reverse_place(lat, lon)
+    if not label:
+        return JSONResponse(
+            status_code=404,
+            content={"error": "not_found", "message": "No place name for these coordinates"},
+        )
+    return JSONResponse(content={"lat": lat, "lon": lon, "label": label})
+
+
+def _request_ip(request: Request) -> str | None:
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        return forwarded.split(",")[0].strip() or None
+    if request.client and request.client.host:
+        return request.client.host
+    return None
+
+
+@router.get("/geolocate")
+async def geolocate(request: Request) -> JSONResponse:
+    try:
+        result = await locate_by_ip(_request_ip(request))
+    except GeocodeNotFoundError as exc:
+        return JSONResponse(
+            status_code=404,
+            content={"error": "not_found", "message": str(exc)},
+        )
+    except GeocodeTimeoutError:
+        return JSONResponse(
+            status_code=504,
+            content={"error": "timeout", "message": "Location search timed out"},
+        )
+    except (GeocodeUnavailableError, GeocodeError):
+        return JSONResponse(
+            status_code=503,
+            content={"error": "geocode_unavailable", "message": "Location search is unavailable"},
+        )
+    return JSONResponse(content=result)

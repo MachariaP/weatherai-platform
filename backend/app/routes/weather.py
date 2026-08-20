@@ -27,6 +27,7 @@ from app.errors import (
     WeatherAITimeoutError,
     WeatherAIUnavailableError,
 )
+from app.geocode import reverse_place
 from app.models import UpstreamWeatherResponse
 from app.normalize import normalize_weather
 from app.retry import with_retry
@@ -123,6 +124,10 @@ async def get_weather(
             status_code=502,
             content={"error": "malformed_response", "message": "Could not process weather data"},
         )
+
+    place_name = await reverse_place(normalized.lat, normalized.lon)
+    if place_name:
+        normalized = normalized.model_copy(update={"place_name": place_name})
 
     response_data = normalized.model_dump()
     _cache.set(cache_key, response_data, DEFAULT_TTL_SECONDS)

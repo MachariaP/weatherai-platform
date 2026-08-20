@@ -40,6 +40,14 @@ class UpstreamCurrentCondition(BaseModel):
     winddirection: float | None = None
     weathercode: int | None = None
     is_day: int | None = None
+    # Optional extras — present only if WeatherAI actually sends them.
+    humidity: float | None = None
+    relativehumidity: float | None = None
+    uv: float | None = None
+    uv_index: float | None = None
+    pressure: float | None = None
+    feels_like: float | None = None
+    apparent_temperature: float | None = None
 
 
 class UpstreamDailyEntry(BaseModel):
@@ -126,6 +134,11 @@ class CurrentWeather(BaseModel):
     weather_description: str
     is_day: bool
     observed_at: str | None = None
+    feels_like: float | None = None
+    humidity: float | None = None
+    uv_index: float | None = None
+    pressure: float | None = None
+    precip_last_24h: float | None = None
 
 
 class ForecastDay(BaseModel):
@@ -154,3 +167,10 @@ class WeatherResponse(BaseModel):
     daily: list[ForecastDay]
     hourly: list[HourlyForecast]
     ai_summary: str | None = None
+    place_name: str | None = None
+
+
+class GeocodeResult(BaseModel):
+    lat: float
+    lon: float
+    label: str

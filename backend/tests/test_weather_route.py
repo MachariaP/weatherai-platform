@@ -52,6 +52,14 @@ def _clear_cache():
     _cache.clear()
 
 
+@pytest.fixture(autouse=True)
+def _skip_nominatim(monkeypatch: pytest.MonkeyPatch):
+    async def _no_place(lat: float, lon: float, **kwargs):
+        return None
+
+    monkeypatch.setattr("app.routes.weather.reverse_place", _no_place)
+
+
 def _patch_key(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setenv("WEATHERAI_API_KEY", "wai_test_route_key")
     from app.config import get_settings
@@ -112,6 +120,22 @@ def test_happy_path_returns_normalized_response(monkeypatch: pytest.MonkeyPatch)
     assert body["current"]["weather_description"] == "Partly cloudy"
     assert body["daily"][0]["date"] == "2026-08-19"
     assert body["hourly"][0]["temperature"] == 16.0
+
+
+@respx.mock
+def test_happy_path_includes_place_name_when_reverse_succeeds(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    _patch_key(monkeypatch)
+
+    async def _nairobi(lat: float, lon: float, **kwargs):
+        return "Nairobi, Kenya"
+
+    monkeypatch.setattr("app.routes.weather.reverse_place", _nairobi)
+    respx.get(WEATHER_URL).mock(return_value=httpx.Response(200, json=VALID_UPSTREAM))
+    resp = client.get("/weather", params={"lat": -1.29, "lon": 36.82})
+    assert resp.status_code == 200
+    assert resp.json()["place_name"] == "Nairobi, Kenya"
 
 
 @respx.mock

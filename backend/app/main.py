@@ -9,6 +9,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
+from app.routes.geocode import router as geocode_router
 from app.routes.weather import router as weather_router
 
 settings = get_settings()
@@ -21,12 +22,13 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins,
+    allow_origins=settings.cors_origin_list,
     allow_methods=["GET"],
     allow_headers=["*"],
 )
 
 app.include_router(weather_router)
+app.include_router(geocode_router)
 
 
 @app.get("/health")

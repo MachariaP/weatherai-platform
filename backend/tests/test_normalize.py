@@ -165,6 +165,48 @@ def test_ai_summary_passed_through():
 def test_ai_summary_none_when_absent():
     result = normalize_weather(_upstream())
     assert result.ai_summary is None
+    assert result.place_name is None
+    assert result.current.humidity is None
+    assert result.current.uv_index is None
+    assert result.current.feels_like is None
+    assert result.current.pressure is None
+
+
+def test_optional_current_extras_are_mapped_when_present():
+    result = normalize_weather(
+        _upstream(
+            current={
+                "temperature": 22.0,
+                "humidity": 45,
+                "uv_index": 6,
+                "pressure": 1012,
+                "feels_like": 24,
+            }
+        )
+    )
+    assert result.current.humidity == 45
+    assert result.current.uv_index == 6
+    assert result.current.pressure == 1012
+    assert result.current.feels_like == 24
+
+
+def test_precip_last_24h_sums_hourly_window():
+    result = normalize_weather(
+        _upstream(
+            current={"time": "2026-08-19T12:00", "temperature": 22.0, "weathercode": 0},
+            hourly=[
+                {"time": "2026-08-18T11:00", "temp": 16.0, "precipitation": 9.0, "weathercode": 0},
+                {"time": "2026-08-19T00:00", "temp": 16.0, "precipitation": 0.5, "weathercode": 0},
+                {"time": "2026-08-19T12:00", "temp": 22.0, "precipitation": 1.5, "weathercode": 0},
+            ],
+        )
+    )
+    assert result.current.precip_last_24h == 2.0
+
+
+def test_place_name_passthrough():
+    result = normalize_weather(_upstream(), place_name="Nairobi, Kenya")
+    assert result.place_name == "Nairobi, Kenya"
 
 
 # ── Missing current block ──────────────────────────────────────────

@@ -31,6 +31,7 @@ def _real_client() -> WeatherAIClient:
         weatherai_base_url="https://api.weather-ai.co",
         weatherai_timeout=15.0,
         weatherai_max_retries=1,
+        cors_origins="http://localhost:3000",
     )
     return WeatherAIClient(settings=settings)
 
@@ -55,6 +56,11 @@ async def test_real_weather_returns_valid_structure():
     print("\n--- Real API response structure ---")
     print(f"Coordinates: {parsed.lat}, {parsed.lon}")
     print(f"Units: {parsed.units}")
+    current_raw = result.data.get("current")
+    if isinstance(current_raw, dict):
+        print(f"Current keys: {sorted(current_raw.keys())}")
+    extra = parsed.current.model_extra if parsed.current is not None else None
+    print(f"Current extra keys: {sorted(extra.keys()) if extra else []}")
     if parsed.current:
         print(f"Temp: {parsed.current.temperature}°")
         print(f"Wind: {parsed.current.windspeed} @ {parsed.current.winddirection}°")
