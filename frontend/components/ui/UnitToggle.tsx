@@ -17,7 +17,7 @@ export function UnitToggle() {
         aria-label="Celsius"
         onClick={() => setUnits("metric")}
         title="Celsius"
-        className="focus-ring rounded-full px-2.5 py-1.5 text-xs font-semibold text-text-muted transition-colors hover:text-text aria-pressed:bg-accent aria-pressed:text-on-accent"
+        className="focus-ring min-h-10 min-w-10 rounded-full px-2.5 text-xs font-semibold text-text-muted transition-colors hover:text-text aria-pressed:bg-accent aria-pressed:text-on-accent"
       >
         °C
       </button>
@@ -27,7 +27,7 @@ export function UnitToggle() {
         aria-label="Fahrenheit"
         onClick={() => setUnits("imperial")}
         title="Fahrenheit"
-        className="focus-ring rounded-full px-2.5 py-1.5 text-xs font-semibold text-text-muted transition-colors hover:text-text aria-pressed:bg-accent aria-pressed:text-on-accent"
+        className="focus-ring min-h-10 min-w-10 rounded-full px-2.5 text-xs font-semibold text-text-muted transition-colors hover:text-text aria-pressed:bg-accent aria-pressed:text-on-accent"
       >
         °F
       </button>

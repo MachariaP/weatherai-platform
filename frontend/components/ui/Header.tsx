@@ -27,12 +27,12 @@ export function Header() {
     }`;
 
   return (
-    <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur-sm">
+    <header className="sticky top-0 z-40 border-b border-border bg-background">
       <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-6">
         <div className="flex flex-wrap items-center gap-3 py-3 md:h-[4.25rem] md:flex-nowrap md:gap-4 md:py-0">
           <WeatherLogo />
 
-          <div className="order-3 w-full md:order-2 md:min-w-0 md:flex-1 md:max-w-md md:mx-auto">
+          <div className="order-3 w-full md:order-2 md:min-w-0 md:flex-1 md:max-w-xl md:mx-auto lg:max-w-2xl">
             <SearchBar />
           </div>
 

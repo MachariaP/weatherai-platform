@@ -31,11 +31,11 @@ export function EmptyState() {
   return (
     <section
       aria-label="Your weather, at a glance"
-      className="bg-precision-dots relative -mx-4 flex min-h-[calc(100dvh-12rem)] flex-col items-center justify-center px-4 pb-16 pt-8 text-center sm:-mx-6 sm:px-6 lg:-mx-6 lg:px-6"
+      className="bg-precision-dots relative -mx-4 flex min-h-[min(36rem,calc(100dvh-11rem))] flex-col items-center justify-center px-4 py-12 text-center sm:-mx-6 sm:px-6 lg:-mx-6 lg:px-6"
     >
       <div
         aria-hidden="true"
-        className="mb-8 grid h-28 w-28 place-items-center rounded-full border border-border bg-surface shadow-[0_0_40px_rgba(87,241,219,0.05)] sm:h-32 sm:w-32"
+        className="mb-8 grid h-28 w-28 place-items-center rounded-full border border-border bg-surface sm:h-32 sm:w-32"
       >
         <WeatherIcon name="cloudy" className="h-14 w-14 text-accent sm:h-16 sm:w-16" />
       </div>

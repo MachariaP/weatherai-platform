@@ -293,7 +293,7 @@ export function SearchBar() {
                       : "Recent locations"
                   : "Location suggestions"
               }
-              className="absolute z-30 mt-1 max-h-64 w-full overflow-auto rounded-control border border-border bg-surface py-1 shadow-lg"
+              className="absolute z-30 mt-1 max-h-64 w-full overflow-auto rounded-control border border-border bg-surface py-1"
             >
               {showBrowse ? (
                 <>
@@ -391,7 +391,7 @@ export function SearchBar() {
                     role="option"
                     id={`${listId}-option-${index}`}
                     aria-selected={index === activeIndex}
-                    className={`flex w-full flex-col px-3 py-3 text-left ${
+                    className={`flex min-h-10 w-full flex-col justify-center px-3 py-2 text-left ${
                       index === activeIndex
                         ? "border-l-2 border-accent bg-accent/15 font-medium text-text"
                         : "border-l-2 border-transparent text-text-secondary hover:bg-accent/10"
