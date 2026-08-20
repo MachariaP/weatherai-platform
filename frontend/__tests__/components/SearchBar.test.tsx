@@ -5,6 +5,7 @@ import { describe, it, expect, afterEach, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, act, waitFor } from "@testing-library/react";
 import { SearchBar } from "@/components/ui/SearchBar";
 import { LocationProvider, useLocation } from "@/components/providers/LocationProvider";
+import { ViewProvider } from "@/components/providers/ViewProvider";
 
 afterEach(() => {
   cleanup();
@@ -33,8 +34,10 @@ function Probe() {
 function renderSearch() {
   return render(
     <LocationProvider>
-      <SearchBar />
-      <Probe />
+      <ViewProvider>
+        <SearchBar />
+        <Probe />
+      </ViewProvider>
     </LocationProvider>
   );
 }
@@ -80,6 +83,8 @@ describe("SearchBar", () => {
     expect(screen.getByText("lat:-1.2864 lon:36.8172")).toBeDefined();
     expect(String(vi.mocked(fetch).mock.calls[0][0])).toMatch(/^\/api\/geocode\?q=Nairobi$/);
     expect(window.location.search).toContain("lat=-1.2864");
+    fireEvent.focus(screen.getByLabelText("Location or coordinates"));
+    expect(screen.getByText("Actions")).toBeDefined();
   });
 
   it("does not change the URL while the user is only typing", async () => {
@@ -183,5 +188,53 @@ describe("SearchBar", () => {
     });
     fireEvent.keyDown(input, { key: "Enter" });
     expect(screen.getByText("lat:-1.2864 lon:36.8172")).toBeDefined();
+  });
+
+  it("exposes GPS, coordinates, and compare from the unified switcher", async () => {
+    vi.stubGlobal("navigator", {
+      geolocation: {
+        getCurrentPosition: (success: PositionCallback) => {
+          success({
+            coords: {
+              latitude: 51.5074,
+              longitude: -0.1278,
+              accuracy: 10,
+              altitude: null,
+              altitudeAccuracy: null,
+              heading: null,
+              speed: null,
+              toJSON() {
+                return {};
+              },
+            },
+            timestamp: Date.now(),
+            toJSON() {
+              return {};
+            },
+          });
+        },
+      },
+    });
+    localStorage.setItem(
+      "weatherai:favorite-locations",
+      JSON.stringify([
+        { lat: -1.2864, lon: 36.8172, label: "Nairobi, Kenya" },
+        { lat: -4.0435, lon: 39.6682, label: "Mombasa, Kenya" },
+      ])
+    );
+    renderSearch();
+    fireEvent.focus(screen.getByLabelText("Location or coordinates"));
+    expect(screen.getByText("Actions")).toBeDefined();
+    expect(screen.getByRole("button", { name: "Enter coordinates" })).toBeDefined();
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Compare saved places" })).toBeDefined()
+    );
+    fireEvent.click(screen.getByRole("option", { name: /Nairobi, Kenya/ }));
+    fireEvent.focus(screen.getByLabelText("Location or coordinates"));
+    expect(screen.getByText("Actions")).toBeDefined();
+    fireEvent.click(screen.getByRole("button", { name: "Use my location" }));
+    await waitFor(() => {
+      expect(screen.getByText(/lat:51\.5074 lon:-0\.1278/)).toBeDefined();
+    });
   });
 });

@@ -209,3 +209,19 @@ export function StarIcon({ className, filled = false }: IconProps & { filled?: b
     </svg>
   );
 }
+
+export function ChevronDownIcon({ className }: IconProps) {
+  return (
+    <svg {...BASE} className={className}>
+      <path d="m6 9 6 6 6-6" />
+    </svg>
+  );
+}
+
+export function CloseIcon({ className }: IconProps) {
+  return (
+    <svg {...BASE} className={className}>
+      <path d="M6 6 18 18M18 6 6 18" />
+    </svg>
+  );
+}

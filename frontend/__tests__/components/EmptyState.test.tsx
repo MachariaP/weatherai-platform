@@ -5,6 +5,7 @@ import { describe, it, expect, afterEach, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { EmptyState } from "@/components/weather/EmptyState";
 import { LocationProvider } from "@/components/providers/LocationProvider";
+import { ViewProvider } from "@/components/providers/ViewProvider";
 import { SearchBar } from "@/components/ui/SearchBar";
 
 afterEach(() => {
@@ -17,8 +18,10 @@ afterEach(() => {
 function renderEmpty() {
   return render(
     <LocationProvider>
-      <SearchBar />
-      <EmptyState />
+      <ViewProvider>
+        <SearchBar />
+        <EmptyState />
+      </ViewProvider>
     </LocationProvider>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { SearchBar } from "./SearchBar";
+import { LocationSwitcher } from "./LocationSwitcher";
 import { MyLocationButton } from "./MyLocationButton";
 import { WeatherLogo } from "./WeatherLogo";
 import { useLocation } from "@/components/providers/LocationProvider";
@@ -33,7 +33,7 @@ export function Header() {
           <WeatherLogo />
 
           <div className="order-3 w-full md:order-2 md:min-w-0 md:flex-1 md:max-w-xl md:mx-auto lg:max-w-2xl">
-            <SearchBar />
+            <LocationSwitcher />
           </div>
 
           <div className="order-2 ml-auto flex items-center gap-2 md:order-4 md:ml-0">
