@@ -338,4 +338,62 @@ describe("LocationProvider", () => {
     });
     expect(result.current.location).toBeNull();
   });
+
+  it("saves and removes favorites without storing weather or reordering on visit", () => {
+    const { result } = renderHook(() => useLocation(), { wrapper });
+    const nairobi = { lat: -1.2864, lon: 36.8172, label: "Nairobi, Kenya" };
+    const london = { lat: 51.5074, lon: -0.1278, label: "London, United Kingdom" };
+
+    act(() => {
+      result.current.addFavorite(nairobi);
+      result.current.addFavorite(london);
+    });
+    expect(result.current.favorites.map((item) => item.label)).toEqual([
+      "Nairobi, Kenya",
+      "London, United Kingdom",
+    ]);
+    expect(result.current.isFavorite(nairobi)).toBe(true);
+
+    act(() => result.current.setLocation(nairobi));
+    expect(result.current.favorites[0].label).toBe("Nairobi, Kenya");
+    expect(result.current.recents[0].label).toBe("Nairobi, Kenya");
+    expect(window.location.search).toContain("lat=-1.2864");
+
+    const stored = JSON.parse(localStorage.getItem("weatherai:favorite-locations") ?? "[]");
+    expect(stored[0]).toEqual({ lat: -1.2864, lon: 36.8172, label: "Nairobi, Kenya" });
+    expect(JSON.stringify(stored)).not.toMatch(/temperature|ai_summary|units/);
+
+    act(() => result.current.removeFavorite(nairobi));
+    expect(result.current.favorites.map((item) => item.label)).toEqual([
+      "London, United Kingdom",
+    ]);
+    expect(result.current.location?.label).toBe("Nairobi, Kenya");
+  });
+
+  it("restores favorites from localStorage and uses their labels for URL hydration", async () => {
+    localStorage.setItem(
+      "weatherai:favorite-locations",
+      JSON.stringify([{ lat: -1.2921, lon: 36.8219, label: "Nairobi, Kenya" }])
+    );
+    window.history.replaceState(null, "", "/?lat=-1.2921&lon=36.8219");
+    const { result } = renderHook(() => useLocation(), { wrapper });
+    await waitFor(() => {
+      expect(result.current.location?.label).toBe("Nairobi, Kenya");
+    });
+    expect(result.current.favorites).toHaveLength(1);
+  });
+
+  it("rejects a 21st favorite with a user-facing notice", () => {
+    const { result } = renderHook(() => useLocation(), { wrapper });
+    act(() => {
+      for (let i = 0; i < 20; i += 1) {
+        result.current.addFavorite({ lat: i, lon: i, label: `Place ${i}` });
+      }
+    });
+    act(() => {
+      result.current.addFavorite({ lat: -1.2864, lon: 36.8172, label: "Nairobi, Kenya" });
+    });
+    expect(result.current.favorites).toHaveLength(20);
+    expect(result.current.favoriteNotice).toMatch(/full \(20\)/i);
+  });
 });

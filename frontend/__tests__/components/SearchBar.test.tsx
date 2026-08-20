@@ -2,7 +2,7 @@
  * @vitest-environment jsdom
  */
 import { describe, it, expect, afterEach, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, act } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, act, waitFor } from "@testing-library/react";
 import { SearchBar } from "@/components/ui/SearchBar";
 import { LocationProvider, useLocation } from "@/components/providers/LocationProvider";
 
@@ -144,6 +144,22 @@ describe("SearchBar", () => {
     expect(screen.getByText("Recent")).toBeDefined();
     fireEvent.click(screen.getByRole("button", { name: "Clear" }));
     expect(screen.queryByText("Recent")).toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("selects a saved place without calling geocode", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    localStorage.setItem(
+      "weatherai:favorite-locations",
+      JSON.stringify([{ lat: -1.2864, lon: 36.8172, label: "Nairobi, Kenya" }])
+    );
+    renderSearch();
+    fireEvent.focus(screen.getByLabelText("Location or coordinates"));
+    await waitFor(() => expect(screen.getByText("Saved")).toBeDefined());
+    fireEvent.click(screen.getByRole("option", { name: /Nairobi, Kenya/ }));
+    expect(screen.getByText("lat:-1.2864 lon:36.8172")).toBeDefined();
+    expect(window.location.search).toContain("lat=-1.2864");
     expect(fetchMock).not.toHaveBeenCalled();
   });
 

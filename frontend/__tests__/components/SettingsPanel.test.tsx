@@ -6,6 +6,8 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { SettingsPanel } from "@/components/weather/SettingsPanel";
 import { PreferencesProvider } from "@/components/providers/PreferencesProvider";
+import { LocationProvider } from "@/components/providers/LocationProvider";
+import { ViewProvider } from "@/components/providers/ViewProvider";
 
 afterEach(() => {
   cleanup();
@@ -13,15 +15,23 @@ afterEach(() => {
 });
 
 function wrapper({ children }: { children: ReactNode }) {
-  return <PreferencesProvider>{children}</PreferencesProvider>;
+  return (
+    <LocationProvider>
+      <PreferencesProvider>
+        <ViewProvider>{children}</ViewProvider>
+      </PreferencesProvider>
+    </LocationProvider>
+  );
 }
 
 describe("SettingsPanel", () => {
-  it("exposes temperature units and AI insights", () => {
+  it("exposes temperature units, forecast range, AI insights, and saved places", () => {
     render(<SettingsPanel />, { wrapper });
     expect(screen.getByRole("heading", { name: "Settings" })).toBeDefined();
     expect(screen.getByRole("group", { name: "Temperature units" })).toBeDefined();
+    expect(screen.getByRole("group", { name: "Forecast range" })).toBeDefined();
     expect(screen.getByRole("switch", { name: "AI insights" })).toBeDefined();
+    expect(screen.getByRole("region", { name: "Saved places" })).toBeDefined();
   });
 
   it("switches units from metric to imperial", () => {
@@ -44,5 +54,14 @@ describe("SettingsPanel", () => {
     expect(localStorage.getItem("ai")).toBe("true");
     fireEvent.click(toggle);
     expect(toggle.getAttribute("aria-checked")).toBe("false");
+  });
+
+  it("persists a 3-day forecast range", () => {
+    render(<SettingsPanel />, { wrapper });
+    fireEvent.click(screen.getByRole("button", { name: "3 days" }));
+    expect(screen.getByRole("button", { name: "3 days" }).getAttribute("aria-pressed")).toBe(
+      "true"
+    );
+    expect(localStorage.getItem("forecastDays")).toBe("3");
   });
 });
