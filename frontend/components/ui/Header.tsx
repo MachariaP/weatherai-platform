@@ -8,7 +8,7 @@ import { WeatherLogo } from "./WeatherLogo";
 
 export function Header() {
   return (
-    <header className="sticky top-0 z-40 border-b border-border bg-bg/85 backdrop-blur-md">
+    <header className="sticky top-0 z-40 border-b border-border bg-surface-elevated">
       <div className="mx-auto w-full max-w-6xl px-4 sm:px-6">
         <div className="flex h-16 items-center gap-3 md:h-[4.5rem] md:gap-6">
           <WeatherLogo />

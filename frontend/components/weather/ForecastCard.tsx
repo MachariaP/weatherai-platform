@@ -19,7 +19,7 @@ export function ForecastCard({ day }: Props) {
     <div
       className={`w-28 shrink-0 rounded-card border p-3.5 text-center transition-colors md:w-auto ${
         isToday
-          ? "border-accent/40 bg-accent/5 shadow-glow"
+          ? "border-accent/30 bg-accent/5"
           : "border-border bg-card hover:bg-card-hover"
       }`}
     >
@@ -46,7 +46,7 @@ export function ForecastCard({ day }: Props) {
         </span>
       </p>
       {precip && (
-        <p className="mt-2 inline-flex items-center gap-1 rounded-full bg-accent/10 px-2 py-0.5 text-[11px] font-medium text-accent">
+        <p className="mt-2 inline-flex items-center gap-1 rounded-md bg-accent/10 px-2 py-0.5 text-[11px] font-medium text-accent">
           <DropletIcon className="h-3 w-3" />
           {precip}
         </p>

@@ -59,12 +59,8 @@ export function CurrentWeather({ data, units, location, cacheStatus }: Props) {
   return (
     <section
       aria-label="Current weather"
-      className="relative overflow-hidden rounded-panel border border-border bg-card shadow-card"
+      className="rounded-panel border border-border bg-card shadow-card"
     >
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-accent/40 to-transparent"
-      />
       <div className="p-5 sm:p-7">
         <header className="mb-6 flex flex-wrap items-start justify-between gap-3">
           <div>
@@ -72,7 +68,7 @@ export function CurrentWeather({ data, units, location, cacheStatus }: Props) {
               Current location
             </p>
             <h2 className="mt-1 flex items-center gap-1.5 text-lg font-semibold text-text">
-              <MapPinIcon className="h-4 w-4 shrink-0 text-accent" />
+              <MapPinIcon className="h-4 w-4 shrink-0 text-text-muted" />
               <span className="truncate">{location}</span>
             </h2>
           </div>
@@ -96,7 +92,7 @@ export function CurrentWeather({ data, units, location, cacheStatus }: Props) {
 
         <div className="flex flex-col gap-8 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-center gap-5 sm:gap-6">
-            <div className="grid h-20 w-20 shrink-0 place-items-center rounded-2xl border border-accent/20 bg-accent/10 sm:h-24 sm:w-24">
+            <div className="grid h-20 w-20 shrink-0 place-items-center rounded-2xl border border-border bg-surface sm:h-24 sm:w-24">
               <WeatherIcon
                 name={iconName}
                 className="h-11 w-11 text-accent sm:h-14 sm:w-14"

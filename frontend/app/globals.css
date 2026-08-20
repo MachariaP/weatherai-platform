@@ -5,9 +5,10 @@
  * ------------------------------------------------------------------------- */
 
 @theme {
-  /* Colors */
-  --color-bg: #0a1120;
+  /* Colors — neutral dark surfaces */
+  --color-background: #0a1120;
   --color-surface: #101a2e;
+  --color-surface-elevated: #0d1626;
   --color-card: #152036;
   --color-card-hover: #1a2941;
 
@@ -18,8 +19,10 @@
   --color-text-secondary: #a8b7cd;
   --color-text-muted: #7487a3;
 
-  --color-accent: #38bdf8;
-  --color-accent-strong: #0ea5e9;
+  /* Colors — restrained teal/cyan accent family */
+  --color-accent: #2dd4bf;
+  --color-accent-secondary: #22d3ee;
+  --color-accent-strong: #14b8a6;
 
   --color-success: #34d399;
   --color-warning: #fbbf24;
@@ -44,7 +47,6 @@
     0 1px 2px rgb(2 6 23 / 0.35), 0 16px 40px -16px rgb(2 6 23 / 0.55);
   --shadow-float:
     0 2px 4px rgb(2 6 23 / 0.4), 0 20px 50px -20px rgb(2 6 23 / 0.6);
-  --shadow-glow: 0 8px 32px -8px rgb(56 189 248 / 0.35);
 }
 
 /* ---------------------------------------------------------------------------
@@ -67,23 +69,7 @@ body {
   display: flex;
   flex-direction: column;
   color: var(--color-text);
-  background-color: var(--color-bg);
-  background-image:
-    radial-gradient(
-      60rem 30rem at 85% -12%,
-      rgb(56 189 248 / 0.09),
-      transparent 65%
-    ),
-    radial-gradient(
-      50rem 26rem at -12% 112%,
-      rgb(14 165 233 / 0.06),
-      transparent 60%
-    ),
-    radial-gradient(
-      32rem 20rem at 50% 40%,
-      rgb(30 41 59 / 0.28),
-      transparent 70%
-    );
+  background-color: var(--color-background);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -95,7 +81,7 @@ body {
 }
 
 ::selection {
-  background: rgb(56 189 248 / 0.3);
+  background: rgb(45 211 191 / 0.3);
   color: var(--color-text);
 }
 

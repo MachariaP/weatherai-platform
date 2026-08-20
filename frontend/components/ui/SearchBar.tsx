@@ -37,7 +37,7 @@ export function SearchBar() {
       <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-text-muted">
         Search by coordinates
       </p>
-      <div className="flex items-center rounded-xl border border-border-strong bg-surface shadow-card transition-colors focus-within:border-accent focus-within:ring-2 focus-within:ring-accent/20">
+      <div className="flex items-center rounded-xl border border-border bg-surface shadow-card transition-colors focus-within:border-accent focus-within:ring-2 focus-within:ring-accent/15">
         <span className="hidden h-9 w-9 shrink-0 place-items-center text-text-muted sm:grid">
           <SearchIcon className="h-4 w-4" />
         </span>
@@ -76,7 +76,7 @@ export function SearchBar() {
         />
         <button
           type="submit"
-          className="focus-ring m-1.5 inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg bg-accent px-3.5 text-sm font-semibold text-bg transition-colors hover:bg-accent-strong active:translate-y-px"
+          className="focus-ring m-1.5 inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg bg-accent px-3.5 text-sm font-semibold text-background transition-colors hover:bg-accent-strong active:translate-y-px"
         >
           <SearchIcon className="h-4 w-4 sm:hidden" />
           <span>Get weather</span>

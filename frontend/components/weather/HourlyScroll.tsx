@@ -25,7 +25,7 @@ export function HourlyScroll({ hours }: Props) {
             <div
               key={hour.time}
               className={`w-24 shrink-0 rounded-card border p-3 text-center transition-colors ${
-                now ? "border-accent/40 bg-accent/5" : "border-border bg-card"
+                now ? "border-accent/30 bg-accent/5" : "border-border bg-card"
               }`}
             >
               <p

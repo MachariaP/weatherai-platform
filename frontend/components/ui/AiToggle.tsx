@@ -1,7 +1,6 @@
 "use client";
 
 import { usePreferences } from "@/components/providers/PreferencesProvider";
-import { SparkleIcon } from "./icons";
 
 export function AiToggle() {
   const { aiEnabled, setAiEnabled } = usePreferences();
@@ -13,11 +12,8 @@ export function AiToggle() {
       aria-checked={aiEnabled}
       aria-label="AI insights"
       onClick={() => setAiEnabled(!aiEnabled)}
-      className="focus-ring inline-flex h-10 shrink-0 items-center gap-2 rounded-xl border border-border bg-surface px-2 shadow-card transition-colors hover:border-border-strong sm:px-3"
+      className="focus-ring inline-flex h-10 shrink-0 items-center gap-2 rounded-xl border border-border bg-surface px-2 transition-colors hover:border-border-strong sm:px-2.5"
     >
-      <SparkleIcon
-        className={`h-4 w-4 ${aiEnabled ? "text-accent" : "text-text-muted"}`}
-      />
       <span className="hidden text-sm font-medium text-text-secondary sm:inline">
         AI insights
       </span>

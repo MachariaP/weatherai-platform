@@ -10,10 +10,10 @@ export function AISummary({ summary }: Props) {
   return (
     <section
       aria-label="AI weather insight"
-      className="relative overflow-hidden rounded-panel border border-accent/25 bg-gradient-to-br from-accent/10 via-accent/5 to-transparent p-5 shadow-card sm:p-6"
+      className="rounded-panel border border-accent/20 bg-accent/5 p-5 shadow-card sm:p-6"
     >
       <div className="mb-3.5 flex items-center gap-3">
-        <span className="grid h-9 w-9 place-items-center rounded-xl border border-accent/25 bg-accent/15 text-accent">
+        <span className="grid h-9 w-9 place-items-center rounded-xl border border-border bg-surface text-accent-secondary">
           <SparkleIcon className="h-4 w-4" />
         </span>
         <div>

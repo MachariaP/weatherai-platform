@@ -57,23 +57,27 @@ Defined as Tailwind v4 theme tokens in `app/globals.css`.
 
 ### Color
 
-| Token            | Value      | Use                          |
-| ---------------- | ---------- | ---------------------------- |
-| `bg`             | `#0a1120`  | page background              |
-| `surface`        | `#101a2e`  | controls, detail tiles       |
-| `card`           | `#152036`  | cards                        |
-| `border`         | `#24334e`  | hairlines                    |
-| `border-strong`  | `#33456b`  | emphasized borders           |
-| `text`           | `#eef3fa`  | primary text                 |
-| `text-secondary` | `#a8b7cd`  | body/card text               |
-| `text-muted`     | `#7487a3`  | captions, labels             |
-| `accent`         | `#38bdf8`  | primary action, highlights   |
-| `success`        | `#34d399`  | live/positive states         |
-| `warning`        | `#fbbf24`  | soft warnings (geolocation)  |
-| `error`          | `#f87171`  | errors                       |
+| Token               | Value      | Use                                    |
+| ------------------- | ---------- | -------------------------------------- |
+| `background`        | `#0a1120`  | page background                        |
+| `surface`           | `#101a2e`  | controls, detail tiles                 |
+| `surface-elevated`  | `#0d1626`  | header                                 |
+| `card`              | `#152036`  | cards                                  |
+| `border`            | `#24334e`  | hairlines                              |
+| `border-strong`     | `#33456b`  | emphasized borders                     |
+| `text`              | `#eef3fa`  | primary text                           |
+| `text-secondary`    | `#a8b7cd`  | body/card text                         |
+| `text-muted`        | `#7487a3`  | captions, labels                       |
+| `accent`            | `#2dd4bf`  | primary action, selected states (teal) |
+| `accent-secondary`  | `#22d3ee`  | secondary accent (AI mark, cyan)       |
+| `accent-strong`     | `#14b8a6`  | accent hover                           |
+| `success`           | `#34d399`  | live/positive states                   |
+| `warning`           | `#fbbf24`  | soft warnings (geolocation)            |
+| `error`             | `#f87171`  | errors                                 |
 
-The page background layers three subtle radial gradients for an
-atmospheric depth; cards sit on translucent surfaces above it.
+The page background is a flat dark navy; accent usage is deliberately
+restrained — one primary CTA per state, teal for active/selected
+elements, cyan reserved for the AI mark.
 
 ### Typography
 
@@ -90,8 +94,7 @@ size, tracking, and case rather than a custom webfont:
 - `rounded-card` (16px) — cards, controls
 - `rounded-panel` (22px) — hero and section containers
 - `rounded-control` (10px) — inputs/buttons
-- Shadows: `card`, `float`, and `glow` (accent halo used only on the
-  emphasized "Today" forecast tile)
+- Shadows: `card` and `float` only — no glow/halo effects
 
 ### Motion
 
