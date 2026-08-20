@@ -106,7 +106,7 @@ def test_weather_query_params():
 def test_public_errors_use_api_error_model():
     openapi = _schema()
     weather_errors = openapi["paths"]["/weather"]["get"]["responses"]
-    for status in ("400", "403", "429", "502", "504"):
+    for status in ("400", "403", "429", "502", "503", "504"):
         name = _ref_name(weather_errors[status]["content"]["application/json"]["schema"])
         assert name == "ApiError"
     error = openapi["components"]["schemas"]["ApiError"]

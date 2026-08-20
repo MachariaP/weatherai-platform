@@ -208,6 +208,14 @@ async def test_timeout_raises_timeout_error():
         await _client().get_weather(lat=0, lon=0)
 
 
+@respx.mock
+@pytest.mark.asyncio
+async def test_network_error_raises_unavailable():
+    respx.get(WEATHER_URL).mock(side_effect=httpx.ConnectError("connection refused"))
+    with pytest.raises(WeatherAIUnavailableError):
+        await _client().get_weather(lat=0, lon=0)
+
+
 # ── Malformed response (200 but not JSON) ──────────────────────────
 
 @respx.mock
