@@ -56,6 +56,8 @@ describe("frontend security boundary", () => {
       expect(text, file).not.toMatch(/WEATHERAI_BASE_URL/);
       expect(text, file).not.toContain(UPSTREAM_HOST);
       expect(text, file).not.toMatch(/\bwai_[A-Za-z0-9]{8,}/);
+      expect(text, file).not.toContain("photon.komoot.io");
+      expect(text, file).not.toContain("ipwho.is");
     }
   });
 
@@ -110,6 +112,8 @@ describe("frontend security boundary", () => {
       expect(text, relative).not.toContain(UPSTREAM_HOST);
       expect(text, relative).not.toMatch(/\bwai_[A-Za-z0-9]{8,}/);
       expect(text, relative).not.toMatch(/NEXT_PUBLIC_WEATHERAI/);
+      expect(text, relative).not.toContain("photon.komoot.io");
+      expect(text, relative).not.toContain("ipwho.is");
     }
   });
 });

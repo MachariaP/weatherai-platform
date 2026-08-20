@@ -23,6 +23,8 @@ const NAIROBI: Location = {
 afterEach(() => {
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
+  localStorage.clear();
+  window.history.replaceState(null, "", "/");
 });
 
 describe("LocationProvider", () => {
@@ -276,5 +278,64 @@ describe("LocationProvider", () => {
     expect(() => renderHook(() => useLocation())).toThrow(
       /must be inside LocationProvider/
     );
+  });
+
+  it("records recents, dedupes by rounded coordinates, and can clear them", () => {
+    const { result } = renderHook(() => useLocation(), { wrapper });
+
+    act(() => result.current.setLocation(NAIROBI));
+    act(() =>
+      result.current.setLocation({
+        lat: -1.29214,
+        lon: 36.82194,
+        label: "Nairobi, Kenya",
+      })
+    );
+    act(() =>
+      result.current.setLocation({
+        lat: 51.5074,
+        lon: -0.1278,
+        label: "London, United Kingdom",
+      })
+    );
+
+    expect(result.current.recents).toHaveLength(2);
+    expect(result.current.recents[0].label).toBe("London, United Kingdom");
+    expect(result.current.recents[1].label).toBe("Nairobi, Kenya");
+    expect(window.location.search).toContain("lat=51.5074");
+
+    act(() => result.current.clearRecents());
+    expect(result.current.recents).toHaveLength(0);
+    expect(result.current.location?.label).toBe("London, United Kingdom");
+  });
+
+  it("restores a location from the canonical URL", async () => {
+    window.history.replaceState(null, "", "/?lat=-1.2921&lon=36.8219");
+    const { result } = renderHook(() => useLocation(), { wrapper });
+    await waitFor(() => {
+      expect(result.current.location?.lat).toBe(-1.2921);
+    });
+    expect(result.current.location?.lon).toBe(36.8219);
+  });
+
+  it("restores a recent place label when hydrating the same coordinates from the URL", async () => {
+    localStorage.setItem(
+      "weatherai:recent-locations",
+      JSON.stringify([{ lat: -1.2921, lon: 36.8219, label: "Nairobi, Kenya" }])
+    );
+    window.history.replaceState(null, "", "/?lat=-1.2921&lon=36.8219");
+    const { result } = renderHook(() => useLocation(), { wrapper });
+    await waitFor(() => {
+      expect(result.current.location?.label).toBe("Nairobi, Kenya");
+    });
+  });
+
+  it("rejects invalid URL coordinates without setting a location", async () => {
+    window.history.replaceState(null, "", "/?lat=999&lon=999");
+    const { result } = renderHook(() => useLocation(), { wrapper });
+    await waitFor(() => {
+      expect(result.current.error).toMatch(/invalid coordinates/i);
+    });
+    expect(result.current.location).toBeNull();
   });
 });

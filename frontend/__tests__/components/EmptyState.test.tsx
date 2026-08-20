@@ -10,6 +10,8 @@ import { SearchBar } from "@/components/ui/SearchBar";
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
+  localStorage.clear();
+  window.history.replaceState(null, "", "/");
 });
 
 function renderEmpty() {

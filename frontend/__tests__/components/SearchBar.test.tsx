@@ -2,21 +2,31 @@
  * @vitest-environment jsdom
  */
 import { describe, it, expect, afterEach, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, act } from "@testing-library/react";
 import { SearchBar } from "@/components/ui/SearchBar";
 import { LocationProvider, useLocation } from "@/components/providers/LocationProvider";
 
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
+  localStorage.clear();
+  window.history.replaceState(null, "", "/");
 });
 
 function Probe() {
-  const { location } = useLocation();
-  return location ? (
-    <p>{`lat:${location.lat} lon:${location.lon}`}</p>
-  ) : (
-    <p>no location</p>
+  const { location, setLocation } = useLocation();
+  return (
+    <>
+      {location ? <p>{`lat:${location.lat} lon:${location.lon}`}</p> : <p>no location</p>}
+      <button
+        type="button"
+        onClick={() =>
+          setLocation({ lat: -1.2921, lon: 36.8219, label: "1.29° S, 36.82° E" })
+        }
+      >
+        Seed location
+      </button>
+    </>
   );
 }
 
@@ -29,81 +39,123 @@ function renderSearch() {
   );
 }
 
-function fillAndSubmit(lat: string, lon: string) {
-  fireEvent.change(screen.getByLabelText("Latitude"), { target: { value: lat } });
-  fireEvent.change(screen.getByLabelText("Longitude"), { target: { value: lon } });
-  fireEvent.submit(screen.getByRole("form", { name: "Search location" }));
+function nairobiFetch(results: unknown) {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({ results }),
+    })
+  );
+}
+
+async function typeQuery(value: string) {
+  fireEvent.change(screen.getByLabelText("Location or coordinates"), {
+    target: { value },
+  });
+  await act(async () => {
+    await new Promise((r) => setTimeout(r, 350));
+  });
 }
 
 describe("SearchBar", () => {
-  it("accepts valid coordinates and sets location", () => {
+  it("geocodes a city name through /api/geocode suggestions", async () => {
+    nairobiFetch([
+      { lat: -1.2864, lon: 36.8172, label: "Nairobi, Kenya", country: "Kenya" },
+      {
+        lat: 41.7756,
+        lon: -88.3806,
+        label: "Nairobi, United States",
+        region: "Illinois",
+        country: "United States",
+      },
+    ]);
     renderSearch();
-    fillAndSubmit("-1.2921", "36.8219");
-    expect(screen.getByText("lat:-1.2921 lon:36.8219")).toBeDefined();
-    expect(screen.queryByRole("alert")).toBeNull();
-  });
-
-  it("rejects missing coordinates before setting location", () => {
-    renderSearch();
-    fillAndSubmit("", "");
-    expect(screen.getByRole("alert").textContent).toMatch(/place name or coordinates/i);
-    expect(screen.getByText("no location")).toBeDefined();
-  });
-
-  it("rejects invalid latitude", () => {
-    renderSearch();
-    fillAndSubmit("91", "0");
-    expect(screen.getByRole("alert").textContent).toMatch(/latitude/i);
-    expect(screen.getByText("no location")).toBeDefined();
-  });
-
-  it("rejects invalid longitude", () => {
-    renderSearch();
-    fillAndSubmit("0", "181");
-    expect(screen.getByRole("alert").textContent).toMatch(/longitude/i);
-    expect(screen.getByText("no location")).toBeDefined();
-  });
-
-  it("rejects non-numeric coordinates", () => {
-    renderSearch();
-    fillAndSubmit("abc", "xyz");
-    expect(screen.getByRole("alert")).toBeDefined();
-    expect(screen.getByText("no location")).toBeDefined();
-  });
-
-  it("submits from the Get Weather button", () => {
-    renderSearch();
-    fireEvent.change(screen.getByLabelText("Latitude"), { target: { value: "0" } });
-    fireEvent.change(screen.getByLabelText("Longitude"), { target: { value: "0" } });
-    fireEvent.click(screen.getByRole("button", { name: /get weather/i }));
-    expect(screen.getByText("lat:0 lon:0")).toBeDefined();
-  });
-
-  it("parses a combined lat, lon query", () => {
-    renderSearch();
-    fireEvent.change(screen.getByLabelText("Location or coordinates"), {
-      target: { value: "-1.2921, 36.8219" },
-    });
-    fireEvent.submit(screen.getByRole("form", { name: "Search location" }));
-    expect(screen.getByText("lat:-1.2921 lon:36.8219")).toBeDefined();
-  });
-
-  it("geocodes a city name through /api/geocode", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue({
-        ok: true,
-        status: 200,
-        json: () =>
-          Promise.resolve({ lat: -1.2864, lon: 36.8172, label: "Nairobi, Kenya" }),
-      })
-    );
-    renderSearch();
-    fireEvent.change(screen.getByLabelText("Location or coordinates"), {
-      target: { value: "Nairobi" },
-    });
-    fireEvent.submit(screen.getByRole("form", { name: "Search location" }));
-    await waitFor(() => expect(screen.getByText("lat:-1.2864 lon:36.8172")).toBeDefined());
+    await typeQuery("Nairobi");
+    expect(screen.getByRole("option", { name: /Nairobi, Kenya/ })).toBeDefined();
+    expect(screen.getByRole("option", { name: /Illinois/ })).toBeDefined();
+    expect(vi.mocked(fetch).mock.calls.length).toBe(1);
+    fireEvent.click(screen.getByRole("option", { name: /Nairobi, Kenya/ }));
+    expect(screen.getByText("lat:-1.2864 lon:36.8172")).toBeDefined();
     expect(String(vi.mocked(fetch).mock.calls[0][0])).toMatch(/^\/api\/geocode\?q=Nairobi$/);
+    expect(window.location.search).toContain("lat=-1.2864");
+  });
+
+  it("does not change the URL while the user is only typing", async () => {
+    nairobiFetch([{ lat: -1.2864, lon: 36.8172, label: "Nairobi, Kenya" }]);
+    renderSearch();
+    await typeQuery("Nairobi");
+    expect(screen.getByRole("option", { name: /Nairobi, Kenya/ })).toBeDefined();
+    expect(window.location.search).toBe("");
+  });
+
+  it("shows no locations found without treating it as a crash", async () => {
+    nairobiFetch([]);
+    renderSearch();
+    await typeQuery("zzzznotacity");
+    expect(screen.getByText("No locations found")).toBeDefined();
+    expect(screen.getByText("no location")).toBeDefined();
+  });
+
+  it("closes suggestions on Escape", async () => {
+    nairobiFetch([{ lat: -1.2864, lon: 36.8172, label: "Nairobi, Kenya" }]);
+    renderSearch();
+    const input = screen.getByLabelText("Location or coordinates");
+    fireEvent.change(input, { target: { value: "Nairobi" } });
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 350));
+    });
+    fireEvent.keyDown(input, { key: "Escape" });
+    expect(screen.queryByRole("listbox")).toBeNull();
+  });
+
+  it("debounces lookup so intermediate keystrokes do not each fire a request", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () =>
+        Promise.resolve({
+          results: [{ lat: -1.2864, lon: 36.8172, label: "Nairobi, Kenya" }],
+        }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    renderSearch();
+    const input = screen.getByLabelText("Location or coordinates");
+    fireEvent.change(input, { target: { value: "Nai" } });
+    fireEvent.change(input, { target: { value: "Nairo" } });
+    fireEvent.change(input, { target: { value: "Nairobi" } });
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 350));
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(String(fetchMock.mock.calls[0][0])).toMatch(/q=Nairobi$/);
+  });
+
+  it("lists recent locations without calling geocode", () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    renderSearch();
+    fireEvent.click(screen.getByRole("button", { name: "Seed location" }));
+    fireEvent.change(screen.getByLabelText("Location or coordinates"), {
+      target: { value: "" },
+    });
+    fireEvent.focus(screen.getByLabelText("Location or coordinates"));
+    expect(screen.getByText("Recent")).toBeDefined();
+    fireEvent.click(screen.getByRole("button", { name: "Clear" }));
+    expect(screen.queryByText("Recent")).toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("selects a highlighted suggestion with Enter", async () => {
+    nairobiFetch([{ lat: -1.2864, lon: 36.8172, label: "Nairobi, Kenya" }]);
+    renderSearch();
+    const input = screen.getByLabelText("Location or coordinates");
+    fireEvent.change(input, { target: { value: "Nairobi" } });
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 350));
+    });
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(screen.getByText("lat:-1.2864 lon:36.8172")).toBeDefined();
   });
 });

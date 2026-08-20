@@ -10,7 +10,11 @@ import { LocationProvider } from "@/components/providers/LocationProvider";
 import { PreferencesProvider } from "@/components/providers/PreferencesProvider";
 import { ViewProvider } from "@/components/providers/ViewProvider";
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  localStorage.clear();
+  window.history.replaceState(null, "", "/");
+});
 
 function wrapper({ children }: { children: ReactNode }) {
   return (

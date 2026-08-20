@@ -8,7 +8,7 @@ import type { WeatherResponse } from "@/lib/types";
 import { CurrentConditionsView } from "@/components/weather/CurrentConditionsView";
 import { Header } from "@/components/ui/Header";
 import { BottomNav } from "@/components/ui/BottomNav";
-import { LocationProvider } from "@/components/providers/LocationProvider";
+import { LocationProvider, useLocation } from "@/components/providers/LocationProvider";
 import { PreferencesProvider } from "@/components/providers/PreferencesProvider";
 import { ViewProvider } from "@/components/providers/ViewProvider";
 
@@ -39,12 +39,27 @@ function jsonResponse(body: unknown, init?: { ok?: boolean; status?: number }) {
   };
 }
 
+function SeedNairobi() {
+  const { setLocation } = useLocation();
+  return (
+    <button
+      type="button"
+      onClick={() =>
+        setLocation({ lat: -1.2921, lon: 36.8219, label: "Nairobi, Kenya" })
+      }
+    >
+      Seed Nairobi
+    </button>
+  );
+}
+
 function wrapper({ children }: { children: ReactNode }) {
   return (
     <LocationProvider>
       <PreferencesProvider>
         <ViewProvider>
           <Header />
+          <SeedNairobi />
           {children}
           <BottomNav />
         </ViewProvider>
@@ -54,9 +69,7 @@ function wrapper({ children }: { children: ReactNode }) {
 }
 
 function searchNairobi() {
-  fireEvent.change(screen.getByLabelText("Latitude"), { target: { value: "-1.2921" } });
-  fireEvent.change(screen.getByLabelText("Longitude"), { target: { value: "36.8219" } });
-  fireEvent.submit(screen.getByRole("form", { name: "Search location" }));
+  fireEvent.click(screen.getByRole("button", { name: "Seed Nairobi" }));
 }
 
 beforeEach(() => {
@@ -68,6 +81,7 @@ afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
   localStorage.clear();
+  window.history.replaceState(null, "", "/");
 });
 
 describe("CurrentConditionsView", () => {
@@ -352,7 +366,9 @@ describe("CurrentConditionsView", () => {
       const url = String(input);
       if (url.startsWith("/api/geocode")) {
         return Promise.resolve(
-          jsonResponse({ lat: -1.2864, lon: 36.8172, label: "Nairobi, Kenya" })
+          jsonResponse({
+            results: [{ lat: -1.2864, lon: 36.8172, label: "Nairobi, Kenya", country: "Kenya" }],
+          })
         );
       }
       return Promise.resolve(jsonResponse({ ...MOCK_WEATHER, place_name: "Nairobi, Kenya" }));
@@ -363,11 +379,16 @@ describe("CurrentConditionsView", () => {
     fireEvent.change(screen.getByLabelText("Location or coordinates"), {
       target: { value: "Nairobi" },
     });
-    fireEvent.submit(screen.getByRole("form", { name: "Search location" }));
+    await waitFor(() => expect(screen.getByRole("option", { name: /Nairobi, Kenya/ })).toBeDefined());
+    fireEvent.click(screen.getByRole("option", { name: /Nairobi, Kenya/ }));
 
     await waitFor(() =>
       expect(screen.getAllByText("Nairobi, Kenya").length).toBeGreaterThan(0)
     );
     expect(screen.getByText("Overcast")).toBeDefined();
+    expect(window.location.search).toContain("lat=-1.2864");
+    expect(fetchMock.mock.calls.some((call) => String(call[0]).startsWith("/api/weather"))).toBe(
+      true
+    );
   });
 });

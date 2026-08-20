@@ -29,14 +29,14 @@ describe("GET /api/geocode", () => {
   it("returns a place when FastAPI succeeds", async () => {
     mockFetchGeocode.mockResolvedValue({
       ok: true,
-      data: { lat: -1.2864, lon: 36.8172, label: "Nairobi, Kenya" },
+      data: {
+        results: [{ lat: -1.2864, lon: 36.8172, label: "Nairobi, Kenya", country: "Kenya" }],
+      },
     });
     const res = await GET(makeRequest("Nairobi"));
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({
-      lat: -1.2864,
-      lon: 36.8172,
-      label: "Nairobi, Kenya",
+      results: [{ lat: -1.2864, lon: 36.8172, label: "Nairobi, Kenya", country: "Kenya" }],
     });
   });
 

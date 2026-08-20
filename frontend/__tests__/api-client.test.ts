@@ -340,25 +340,34 @@ describe("fetchWeather", () => {
 });
 
 describe("fetchGeocode", () => {
-  it("maps the first FastAPI hit to lat, lon, and label", async () => {
+  it("maps FastAPI candidates without leaking geocoder hosts", async () => {
     const mockFetch = vi.fn().mockResolvedValue(
-      jsonResponse({ lat: -1.2864, lon: 36.8172, label: "Nairobi, Kenya" })
+      jsonResponse({
+        results: [
+          { lat: -1.2864, lon: 36.8172, label: "Nairobi, Kenya", country: "Kenya" },
+          {
+            lat: 41.7756,
+            lon: -88.3806,
+            label: "Nairobi, United States",
+            region: "Illinois",
+            country: "United States",
+          },
+        ],
+      })
     );
     vi.stubGlobal("fetch", mockFetch);
 
     const result = await fetchGeocode("Nairobi");
     expect(result.ok).toBe(true);
     if (result.ok) {
-      expect(result.data).toEqual({
-        lat: -1.2864,
-        lon: 36.8172,
-        label: "Nairobi, Kenya",
-      });
+      expect(result.data.results).toHaveLength(2);
+      expect(result.data.results[0].label).toBe("Nairobi, Kenya");
     }
     const calledUrl = String(mockFetch.mock.calls[0][0]);
     expect(calledUrl).toContain("http://localhost:8000/geocode");
     expect(calledUrl).toContain("q=Nairobi");
     expect(calledUrl).not.toContain("nominatim");
+    expect(calledUrl).not.toContain("photon");
     expect(calledUrl).not.toContain("weather-ai");
   });
 

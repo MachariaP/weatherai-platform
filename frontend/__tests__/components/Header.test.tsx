@@ -12,7 +12,7 @@ import { ViewProvider } from "@/components/providers/ViewProvider";
 afterEach(() => {
   cleanup();
   localStorage.clear();
-  vi.unstubAllGlobals();
+  window.history.replaceState(null, "", "/");
   vi.restoreAllMocks();
 });
 
@@ -36,8 +36,6 @@ describe("Header shell controls", () => {
 
     expect(screen.getByRole("link", { name: "WeatherAI home" })).toBeDefined();
     expect(screen.getByRole("form", { name: "Search location" })).toBeDefined();
-    expect(screen.getAllByLabelText("Latitude")).toHaveLength(1);
-    expect(screen.getAllByLabelText("Longitude")).toHaveLength(1);
     expect(screen.getByRole("button", { name: "Use my location" })).toBeDefined();
     expect(screen.getByRole("button", { name: "Settings" })).toBeDefined();
     expect(screen.queryByRole("group", { name: "Temperature units" })).toBeNull();
@@ -49,14 +47,6 @@ describe("Header shell controls", () => {
     const searchWrap = container.querySelector(".order-3.w-full");
     expect(searchWrap).not.toBeNull();
     expect(searchWrap?.className).toMatch(/md:flex-1/);
-  });
-
-  it("sets location from coordinate search", () => {
-    renderHeader();
-    fireEvent.change(screen.getByLabelText("Latitude"), { target: { value: "-1.29" } });
-    fireEvent.change(screen.getByLabelText("Longitude"), { target: { value: "36.82" } });
-    fireEvent.submit(screen.getByRole("form", { name: "Search location" }));
-    expect(screen.getByText(/Location set to/)).toBeDefined();
   });
 
   it("uses geolocation success to set coordinates", async () => {

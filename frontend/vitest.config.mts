@@ -8,6 +8,15 @@ export default defineConfig({
   test: {
     include: ["__tests__/**/*.test.ts", "__tests__/**/*.test.tsx"],
     environment: "node",
+    setupFiles: ["./vitest.setup.ts"],
+    testTimeout: 8_000,
+    hookTimeout: 8_000,
+    pool: "threads",
+    environmentOptions: {
+      jsdom: {
+        url: "http://127.0.0.1:9876/",
+      },
+    },
   },
   resolve: {
     alias: {
