@@ -2,7 +2,7 @@
  * @vitest-environment jsdom
  */
 import { describe, it, expect, afterEach } from "vitest";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { ForecastGrid } from "@/components/weather/ForecastGrid";
 import { PreferencesProvider } from "@/components/providers/PreferencesProvider";
@@ -124,6 +124,32 @@ describe("ForecastGrid", () => {
     expect(screen.getByText("Conditions unavailable")).toBeDefined();
     expect(screen.getAllByText("—").length).toBeGreaterThan(0);
     expect(screen.queryByText(/mm/)).toBeNull();
+  });
+
+  it("opens a drill-down for the selected day and closes it", () => {
+    render(<ForecastGrid days={DAYS} units="metric" hourly={[]} />, { wrapper });
+    fireEvent.click(screen.getByRole("button", { name: /Overcast/ }));
+    expect(screen.getByRole("dialog")).toBeDefined();
+    expect(screen.getByText("Hourly detail is not available for this day.")).toBeDefined();
+    fireEvent.click(screen.getByRole("button", { name: "Close forecast day" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("filters hourly rows for a day that has coverage", () => {
+    const hourly = [
+      {
+        time: "2026-08-21T08:00",
+        temperature: 17,
+        precipitation: 0.4,
+        weather_code: 61,
+        weather_description: "Slight rain",
+      },
+    ];
+    render(<ForecastGrid days={DAYS} units="metric" hourly={hourly} />, { wrapper });
+    fireEvent.click(screen.getByRole("button", { name: /Slight rain, high/ }));
+    expect(screen.getByRole("dialog")).toBeDefined();
+    expect(screen.queryByText("Hourly detail is not available for this day.")).toBeNull();
+    expect(screen.getByRole("region", { name: "Hourly evolution" })).toBeDefined();
   });
 
   it("renders days as a vertical list", () => {
