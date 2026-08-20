@@ -139,9 +139,65 @@ describe("LocationProvider", () => {
       result.current.detectLocation();
     });
 
-    expect(result.current.error).toBe("User denied geolocation");
+    expect(result.current.error).toBe("Location permission was denied");
     expect(result.current.detecting).toBe(false);
     expect(result.current.location).toBeNull();
+  });
+
+  it("records a safe error when position is unavailable", () => {
+    vi.stubGlobal("navigator", {
+      geolocation: {
+        getCurrentPosition: (
+          _success: PositionCallback,
+          error?: PositionErrorCallback,
+        ) => {
+          error?.({
+            code: 2,
+            message: "Position update is unavailable (internal)",
+            PERMISSION_DENIED: 1,
+            POSITION_UNAVAILABLE: 2,
+            TIMEOUT: 3,
+          });
+        },
+      },
+    });
+
+    const { result } = renderHook(() => useLocation(), { wrapper });
+
+    act(() => {
+      result.current.detectLocation();
+    });
+
+    expect(result.current.error).toBe("Your position is currently unavailable");
+    expect(JSON.stringify(result.current.error)).not.toContain("internal");
+  });
+
+  it("records a safe error when geolocation times out", () => {
+    vi.stubGlobal("navigator", {
+      geolocation: {
+        getCurrentPosition: (
+          _success: PositionCallback,
+          error?: PositionErrorCallback,
+        ) => {
+          error?.({
+            code: 3,
+            message: "Timeout exceeded at GeolocationPositionError",
+            PERMISSION_DENIED: 1,
+            POSITION_UNAVAILABLE: 2,
+            TIMEOUT: 3,
+          });
+        },
+      },
+    });
+
+    const { result } = renderHook(() => useLocation(), { wrapper });
+
+    act(() => {
+      result.current.detectLocation();
+    });
+
+    expect(result.current.error).toBe("Location request timed out");
+    expect(JSON.stringify(result.current.error)).not.toContain("GeolocationPositionError");
   });
 
   it("clears a previous geolocation error when a location is set", () => {
