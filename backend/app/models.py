@@ -171,6 +171,14 @@ class WeatherResponse(BaseModel):
 
 
 class GeocodeResult(BaseModel):
+    """One place candidate. Optional region/country are omitted when unknown."""
+
     lat: float
     lon: float
     label: str
+    region: str | None = None
+    country: str | None = None
+
+
+class GeocodeSearchResponse(BaseModel):
+    results: list[GeocodeResult]

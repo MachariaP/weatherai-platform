@@ -20,6 +20,7 @@ PHOTON_BASE = "https://photon.komoot.io"
 USER_AGENT = "WeatherAI-QA/1.0 (weatherai-qa-project)"
 GEOCODE_TTL_SECONDS = 86_400.0
 GEOCODE_TIMEOUT_SECONDS = 12.0
+PHOTON_SEARCH_LIMIT = 8
 
 _cache = InMemoryCache()
 
@@ -44,6 +45,12 @@ class GeocodeUnavailableError(GeocodeError):
 
 def _headers() -> dict[str, str]:
     return {"User-Agent": USER_AGENT, "Accept": "application/json"}
+
+
+def _optional_text(value: object) -> str | None:
+    if isinstance(value, str) and value.strip():
+        return value.strip()
+    return None
 
 
 def format_place_label(payload: dict[str, Any]) -> str:
@@ -84,21 +91,47 @@ def format_place_label(payload: dict[str, Any]) -> str:
 
 
 def _from_photon_feature(feature: dict[str, Any]) -> dict[str, Any]:
+    parsed = _try_photon_feature(feature)
+    if parsed is None:
+        raise GeocodeUnavailableError("Geocoder returned an unusable result")
+    return parsed
+
+
+def _try_photon_feature(feature: dict[str, Any]) -> dict[str, Any] | None:
     geometry = feature.get("geometry")
     properties = feature.get("properties")
     if not isinstance(geometry, dict) or not isinstance(properties, dict):
-        raise GeocodeUnavailableError("Geocoder returned an unusable result")
+        return None
     coords = geometry.get("coordinates")
     if not isinstance(coords, list) or len(coords) < 2:
-        raise GeocodeUnavailableError("Geocoder returned an unusable result")
+        return None
     try:
         lon = float(coords[0])
         lat = float(coords[1])
-    except (TypeError, ValueError) as exc:
-        raise GeocodeUnavailableError("Geocoder returned an unusable result") from exc
+    except (TypeError, ValueError):
+        return None
     if not (-90 <= lat <= 90) or not (-180 <= lon <= 180):
-        raise GeocodeUnavailableError("Geocoder returned out-of-range coordinates")
-    return {"lat": lat, "lon": lon, "label": format_place_label(properties)}
+        return None
+    hit: dict[str, Any] = {"lat": lat, "lon": lon, "label": format_place_label(properties)}
+    region = _optional_text(properties.get("state")) or _optional_text(properties.get("county"))
+    country = _optional_text(properties.get("country"))
+    if region:
+        hit["region"] = region
+    if country:
+        hit["country"] = country
+    return hit
+
+
+def _dedupe_hits(hits: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    seen: set[tuple[float, float, str]] = set()
+    unique: list[dict[str, Any]] = []
+    for hit in hits:
+        key = (round(float(hit["lat"]), 4), round(float(hit["lon"]), 4), str(hit["label"]).casefold())
+        if key in seen:
+            continue
+        seen.add(key)
+        unique.append(hit)
+    return unique
 
 
 async def _photon_get(path: str, params: dict[str, Any], *, timeout: float) -> Any:
@@ -125,24 +158,35 @@ async def _photon_get(path: str, params: dict[str, Any], *, timeout: float) -> A
         raise GeocodeUnavailableError("Location search returned an unexpected response") from exc
 
 
-async def search_place(query: str, *, timeout: float = GEOCODE_TIMEOUT_SECONDS) -> dict[str, Any]:
+async def search_places(query: str, *, timeout: float = GEOCODE_TIMEOUT_SECONDS) -> list[dict[str, Any]]:
+    """Return up to PHOTON_SEARCH_LIMIT public place candidates. Empty list if none match."""
     q = query.strip()
     if len(q) < 2:
         raise GeocodeNotFoundError("Search query is too short")
 
-    cache_key = f"geocode:search:{q.casefold()}"
+    cache_key = f"geocode:search:v2:{q.casefold()}"
     cached = _cache.get(cache_key)
     if cached is not None:
         return cached
 
-    body = await _photon_get("/api/", {"q": q, "limit": 1}, timeout=timeout)
-    features = body.get("features") if isinstance(body, dict) else None
-    if not isinstance(features, list) or not features or not isinstance(features[0], dict):
-        raise GeocodeNotFoundError("No matching location")
+    body = await _photon_get("/api/", {"q": q, "limit": PHOTON_SEARCH_LIMIT}, timeout=timeout)
+    if not isinstance(body, dict):
+        raise GeocodeUnavailableError("Location search returned an unexpected response")
+    features = body.get("features")
+    if not isinstance(features, list):
+        raise GeocodeUnavailableError("Location search returned an unexpected response")
 
-    result = _from_photon_feature(features[0])
-    _cache.set(cache_key, result, GEOCODE_TTL_SECONDS)
-    return result
+    hits: list[dict[str, Any]] = []
+    for feature in features:
+        if not isinstance(feature, dict):
+            continue
+        parsed = _try_photon_feature(feature)
+        if parsed is not None:
+            hits.append(parsed)
+
+    results = _dedupe_hits(hits)
+    _cache.set(cache_key, results, GEOCODE_TTL_SECONDS)
+    return results
 
 
 async def reverse_place(lat: float, lon: float, *, timeout: float = GEOCODE_TIMEOUT_SECONDS) -> str | None:

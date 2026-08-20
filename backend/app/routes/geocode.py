@@ -13,20 +13,21 @@ from app.geocode import (
     GeocodeUnavailableError,
     locate_by_ip,
     reverse_place,
-    search_place,
+    search_places,
 )
+from app.models import GeocodeSearchResponse
 
 router = APIRouter()
 
 
 @router.get("/geocode")
-async def geocode(q: Annotated[str, Query(min_length=1, max_length=200)]) -> JSONResponse:
+async def geocode(q: Annotated[str, Query(min_length=2, max_length=200)]) -> JSONResponse:
     try:
-        result = await search_place(q)
+        results = await search_places(q)
     except GeocodeNotFoundError as exc:
         return JSONResponse(
-            status_code=404,
-            content={"error": "not_found", "message": str(exc)},
+            status_code=400,
+            content={"error": "bad_request", "message": str(exc)},
         )
     except GeocodeTimeoutError:
         return JSONResponse(
@@ -38,7 +39,8 @@ async def geocode(q: Annotated[str, Query(min_length=1, max_length=200)]) -> JSO
             status_code=503,
             content={"error": "geocode_unavailable", "message": "Location search is unavailable"},
         )
-    return JSONResponse(content=result)
+    payload = GeocodeSearchResponse.model_validate({"results": results})
+    return JSONResponse(content=payload.model_dump(exclude_none=True))
 
 
 @router.get("/reverse")

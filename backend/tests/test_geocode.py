@@ -29,30 +29,130 @@ def _clear_geocode_cache():
     geocode_cache.clear()
 
 
+def illinois_feature() -> dict:
+    return {
+        "type": "Feature",
+        "properties": {
+            "name": "Nairobi",
+            "state": "Illinois",
+            "country": "United States",
+        },
+        "geometry": {"type": "Point", "coordinates": [-88.3806, 41.7756]},
+    }
+
+
 @respx.mock
-def test_geocode_search_returns_first_hit():
+def test_geocode_search_returns_candidates():
     respx.get(SEARCH_URL).mock(
         return_value=httpx.Response(
             200,
-            json={"type": "FeatureCollection", "features": [nairobi_feature()]},
+            json={
+                "type": "FeatureCollection",
+                "features": [nairobi_feature(), illinois_feature()],
+            },
         )
     )
     resp = client.get("/geocode", params={"q": "Nairobi"})
     assert resp.status_code == 200
     body = resp.json()
-    assert body["lat"] == pytest.approx(-1.286389)
-    assert body["lon"] == pytest.approx(36.817223)
-    assert body["label"] == "Nairobi, Kenya"
+    assert "results" in body
+    assert len(body["results"]) == 2
+    first = body["results"][0]
+    assert first["lat"] == pytest.approx(-1.286389)
+    assert first["lon"] == pytest.approx(36.817223)
+    assert first["label"] == "Nairobi, Kenya"
+    assert first["country"] == "Kenya"
+    assert "region" not in first
+    second = body["results"][1]
+    assert second["region"] == "Illinois"
+    assert second["country"] == "United States"
+    assert "geometry" not in first
+    assert "properties" not in first
+    assert "photon" not in str(body).casefold()
 
 
 @respx.mock
-def test_geocode_search_404_when_empty():
+def test_geocode_search_empty_results_is_not_an_error():
     respx.get(SEARCH_URL).mock(
         return_value=httpx.Response(200, json={"type": "FeatureCollection", "features": []})
     )
     resp = client.get("/geocode", params={"q": "zzzznotacity"})
-    assert resp.status_code == 404
-    assert resp.json()["error"] == "not_found"
+    assert resp.status_code == 200
+    assert resp.json() == {"results": []}
+
+
+@respx.mock
+def test_geocode_search_dedupes_duplicate_features():
+    dup = nairobi_feature()
+    respx.get(SEARCH_URL).mock(
+        return_value=httpx.Response(
+            200,
+            json={"type": "FeatureCollection", "features": [dup, dup]},
+        )
+    )
+    resp = client.get("/geocode", params={"q": "Nairobi"})
+    assert resp.status_code == 200
+    assert len(resp.json()["results"]) == 1
+
+
+@respx.mock
+def test_geocode_search_skips_malformed_features():
+    respx.get(SEARCH_URL).mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "type": "FeatureCollection",
+                "features": [
+                    {"type": "Feature", "properties": {}, "geometry": {}},
+                    nairobi_feature(),
+                ],
+            },
+        )
+    )
+    resp = client.get("/geocode", params={"q": "Nairobi"})
+    assert resp.status_code == 200
+    assert len(resp.json()["results"]) == 1
+    assert resp.json()["results"][0]["label"] == "Nairobi, Kenya"
+
+
+@respx.mock
+def test_geocode_search_malformed_body():
+    respx.get(SEARCH_URL).mock(return_value=httpx.Response(200, json=["not", "an", "object"]))
+    resp = client.get("/geocode", params={"q": "Nairobi"})
+    assert resp.status_code == 503
+    assert resp.json()["error"] == "geocode_unavailable"
+    assert "photon" not in str(resp.json()).casefold()
+
+
+@respx.mock
+def test_geocode_search_provider_4xx():
+    respx.get(SEARCH_URL).mock(return_value=httpx.Response(403, json={"message": "denied"}))
+    resp = client.get("/geocode", params={"q": "Nairobi"})
+    assert resp.status_code == 503
+    assert resp.json()["error"] == "geocode_unavailable"
+
+
+@respx.mock
+def test_geocode_search_provider_5xx():
+    respx.get(SEARCH_URL).mock(return_value=httpx.Response(502, text="bad gateway"))
+    resp = client.get("/geocode", params={"q": "Nairobi"})
+    assert resp.status_code == 503
+    assert resp.json()["error"] == "geocode_unavailable"
+
+
+def test_geocode_search_rejects_short_query():
+    resp = client.get("/geocode", params={"q": "a"})
+    assert resp.status_code == 422
+
+
+def test_geocode_search_rejects_empty_query():
+    resp = client.get("/geocode", params={"q": ""})
+    assert resp.status_code == 422
+
+
+def test_geocode_search_rejects_missing_query():
+    resp = client.get("/geocode")
+    assert resp.status_code == 422
 
 
 @respx.mock
@@ -84,6 +184,7 @@ def test_geocode_search_is_cached():
     second = client.get("/geocode", params={"q": "Null Island"})
     assert first.status_code == 200
     assert second.status_code == 200
+    assert first.json()["results"][0]["label"] == "Null Island"
     assert route.call_count == 1
 
 
