@@ -15,6 +15,10 @@ Phase-by-phase plan for the WeatherAI QA project.
 - The reconciliation phase validates and hardens that work rather than
   expanding scope. It does not add product features.
 - Deployment is **NOT DEPLOYED / NOT VERIFIED** — see `deployment.md`.
+- **Phase A0 + A (location discovery)** — stabilize existing geocode/UI work,
+  then add suggestion lists, recent locations, and shareable `/?lat=&lon=`
+  URLs. Later phases (precip, Playwright, Redis, deploy) are not in this
+  increment.
 
 ---
 

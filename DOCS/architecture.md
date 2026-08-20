@@ -94,10 +94,30 @@ subject to change without an explicit architecture decision.
 |---|---|---|
 | `Upstream*` models | Match the real WeatherAI response shape | `UpstreamWeatherResponse`, `UpstreamCurrent` |
 | `Weather*` models | Public weather contract served to the frontend | `WeatherResponse`, `CurrentWeather` |
-| Geocode public shape | Place candidates / reverse / IP approximate | `{ lat, lon, label }` (and later a `results` list) |
+| Geocode public shape | Place candidates / reverse / IP approximate | Search: `{ results: [...] }`. Reverse and geolocate: `{ lat, lon, label }` |
 
 The weather normalization layer (`normalize()`) converts upstream weather into
 the public contract. Geocode responses are normalized in `app/geocode.py` from
 Photon / ipwho.is into the same `{ lat, lon, label }` application shape.
 When an upstream shape changes, only the FastAPI adapter for that provider
 changes — the browser still never sees provider JSON.
+
+## Location identity
+
+**Coordinates are the weather identity.** A city name is search/display
+convenience: it must resolve to `lat` + `lon` before weather is fetched.
+
+| Concern | Representation |
+|---|---|
+| Weather identity | `lat` + `lon` |
+| Display / search convenience | `label` (and optional `region` / `country` on geocode hits) |
+| Canonical shareable URL | `/?lat=&lon=` |
+| Not an identity | `?q=Nairobi` |
+
+Recent locations are **browser `localStorage` only** (`weatherai:recent-locations`):
+about 8 entries, newest first, `{ lat, lon, label }`. Weather payloads are never
+stored there. There is no server persistence, database, or Redis for recents.
+
+`LocationProvider` is the single client-side location source of truth. Search,
+recents, GPS/IP, and the URL all write through it; the URL is synchronized only
+after a committed location selection, not while the user is typing.

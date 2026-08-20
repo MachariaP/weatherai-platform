@@ -79,7 +79,9 @@ frontend lint, `tsc --noEmit`, and vitest on every push and pull request.
 
 - Current weather with temperature, wind, and conditions
 - 7-day forecast and hourly outlook
-- Place-name search (first Photon match) and coordinate search
+- Place-name search with multiple suggestions (Photon via FastAPI)
+- Recent locations (localStorage, max 8; weather payloads are never stored)
+- Shareable `/?lat=&lon=` URLs (coordinates are canonical)
 - Browser geolocation with IP approximation when GPS is unavailable
 - Metric/imperial and AI insight preferences (Settings, `localStorage`)
 - Cache HIT/MISS indicator
@@ -91,7 +93,7 @@ frontend lint, `tsc --noEmit`, and vitest on every push and pull request.
 | Endpoint | Description |
 |---|---|
 | `GET /api/weather?lat=&lon=` | Weather data (browser-facing) |
-| `GET /api/geocode?q=` | Place search → `{ lat, lon, label }` |
+| `GET /api/geocode?q=` | Place search → `{ results: [ { lat, lon, label } ] }` |
 | `GET /api/reverse?lat=&lon=` | Reverse geocode → `{ lat, lon, label }` |
 | `GET /api/geolocate` | IP approximation → `{ lat, lon, label }` |
 | `GET /health` | Backend liveness (FastAPI, not browser-facing in prod) |
@@ -106,6 +108,8 @@ Query parameters: `lat` (required), `lon` (required), `days` (1-7),
 - **Two-layer data models**: Upstream models (raw API) vs public contract (application shape) — decoupled so upstream changes don't silently propagate.
 - **Typed error handling**: Each upstream error (401, 429, 500, 503, timeout) maps to a specific typed exception with distinct HTTP response.
 - **City search via Photon**: WeatherAI Free is coordinates-only. FastAPI geocodes place names with OpenStreetMap Photon, then calls `/v1/weather` with lat/lon. The browser never talks to Photon or WeatherAI.
+- **Coordinates are identity**: shareable URLs are `/?lat=&lon=`. Place names are not the weather key.
+- **Recent locations**: `localStorage` only (max 8). Weather payloads are never stored there.
 - **IP geolocation**: used only after GPS fails without a permission denial. FastAPI calls the lookup provider; the browser never sees that URL or the IP.
 - **Hide missing metrics**: humidity, UV, pressure, feels-like, and 24h precip tiles render only when FastAPI sent a value.
 

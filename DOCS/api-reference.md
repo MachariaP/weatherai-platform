@@ -107,13 +107,19 @@ Photon URLs never appear in the response.
 |---|---|---|
 | `q` | Yes | Non-empty place query (min length 2 at the Next.js boundary) |
 
-**Success (200):** `{ "lat": -1.2864, "lon": 36.8172, "label": "Nairobi, Kenya" }`
+**Success (200):** `{ "results": [ { "lat": -1.2864, "lon": 36.8172, "label": "Nairobi, Kenya", "country": "Kenya" } ] }`
 
-FastAPI currently returns the first Photon match. (A later phase may return a
-candidate list; this document describes what is implemented now.)
+Each candidate always has `lat`, `lon`, and `label`. `region` and `country` are
+included only when the geocoder provided them — they are omitted, not emptied,
+when unknown.
 
-**Errors:** 400 `bad_request`, 404 `not_found`, 503 `backend_unavailable` /
-`geocode_unavailable`, 504 timeout.
+An empty match is still 200: `{ "results": [] }`. That is not an application
+failure.
+
+Photon URLs and raw Feature objects never appear in the body.
+
+**Errors:** 400 `bad_request` (query too short at the Next.js boundary), 503
+`backend_unavailable` / `geocode_unavailable`, 504 timeout.
 
 ### GET `/api/reverse`
 
@@ -134,6 +140,15 @@ The JSON body never includes an IP address or the lookup-provider URL.
 **Errors:** 404, 503, 504 — same stable codes as geocode. Permission-denied GPS
 in the browser does **not** call this route.
 
+### Location in the UI (not HTTP)
+
+Coordinates remain the weather identity. The dashboard canonical URL is
+`/?lat=&lon=`. `?q=` is not used as identity.
+
+Recent locations are browser `localStorage` only (`weatherai:recent-locations`),
+capped at about 8 entries of `{ lat, lon, label }`. Weather payloads are never
+stored there.
+
 ---
 
 ## Backend (Internal)
@@ -144,7 +159,7 @@ directly in production.
 | Endpoint | Description |
 |---|---|
 | `GET /weather` | Normalized weather; `X-Cache: HIT\|MISS` |
-| `GET /geocode?q=` | Photon search → `{ lat, lon, label }` |
+| `GET /geocode?q=` | Photon search → `{ results: [ { lat, lon, label, region?, country? } ] }` |
 | `GET /reverse?lat=&lon=` | Photon reverse → `{ lat, lon, label }` |
 | `GET /geolocate` | IP approximation → `{ lat, lon, label }` |
 | `GET /health` | Liveness of this process only (`{ "status": "ok" }`). Does not call WeatherAI. |

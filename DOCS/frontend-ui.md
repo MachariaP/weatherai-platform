@@ -33,7 +33,7 @@ come from FastAPI geocoding (`place_name` on weather, or `/api/geocode`).
 app/layout.tsx                — Inter, providers, header, footer, mobile nav
 ├── components/ui/Header      — brand, search, Dashboard/Forecast, My location, settings
 │   ├── WeatherLogo
-│   ├── SearchBar             — combined query + mobile lat/lon
+│   ├── SearchBar             — combobox suggestions + recent places + mobile lat/lon
 │   └── MyLocationButton
 ├── components/weather/CurrentConditionsView — empty / loading / error / views
 │   ├── EmptyState
@@ -47,8 +47,11 @@ supporting: BottomNav, SiteFooter, ErrorBanner, LoadingSkeleton, icons
 
 ### State & data flow
 
-- `LocationProvider` — `{ lat, lon, label }`. `label` is a geocoded place
-  name when search succeeded, otherwise an honest coordinate string.
+- `LocationProvider` — `{ lat, lon, label }` is the single client location
+  source of truth. **Identity is coordinates.** Labels are presentation.
+  Recents (max 8) persist in `localStorage` (`weatherai:recent-locations`)
+  and never store weather payloads. Canonical URL is `/?lat=&lon=`.
+  Invalid URL coordinates set a safe error and do not fetch weather.
 - `PreferencesProvider` — `units` and `aiEnabled`, persisted to
   `localStorage` (`units`, `ai` keys). AI stays disabled by default.
 - `ViewProvider` — dashboard / forecast / insights / settings. One weather
@@ -57,8 +60,9 @@ supporting: BottomNav, SiteFooter, ErrorBanner, LoadingSkeleton, icons
   coordinates change, exposes `refetch`.
 
 City search: the browser calls **`GET /api/geocode?q=`** only. Combined
-desktop input parses `lat, lon` locally when both tokens are numbers;
-otherwise it geocodes the string, then sets location and fetches weather.
+input parses `lat, lon` locally when both tokens are numbers; otherwise it
+debounces a suggestion request. Selecting a candidate sets `LocationProvider`
+and the canonical URL. Typing does not update the URL.
 
 ## Design system
 
