@@ -1,6 +1,6 @@
 "use client";
 
-import type { KeyboardEvent } from "react";
+import { useLayoutEffect, useRef, type KeyboardEvent } from "react";
 import type { HourlyForecast } from "@/lib/types";
 import { WeatherIcon, getWeatherIconName } from "@/lib/weather-icons";
 import {
@@ -43,12 +43,32 @@ function hourLabel(time: string | undefined): string {
   return isCurrentHour(time) ? "Now" : formatHour24(time);
 }
 
+function alignNowCard(list: HTMLElement, card: HTMLElement) {
+  const delta =
+    card.getBoundingClientRect().left - list.getBoundingClientRect().left;
+  list.scrollLeft = Math.max(0, list.scrollLeft + delta);
+}
+
 /**
  * Horizontally scrollable hourly outlook from FastAPI `hourly`.
  * Precipitation is an amount (never a percent), shown only when finite.
+ * On load and when `hours` is replaced (refresh), the current hour is
+ * aligned to the start of the visible strip.
  */
 export function HourlyScroll({ hours, units }: Props) {
   const rows = Array.isArray(hours) ? hours : [];
+  const listRef = useRef<HTMLDivElement>(null);
+  const nowRef = useRef<HTMLElement>(null);
+  const nowIndex = rows.findIndex(
+    (hour) => Boolean(hour.time?.trim()) && isCurrentHour(hour.time)
+  );
+
+  useLayoutEffect(() => {
+    const list = listRef.current;
+    const card = nowRef.current;
+    if (!list || !card) return;
+    alignNowCard(list, card);
+  }, [hours]);
 
   return (
     <section aria-label="Hourly forecast">
@@ -61,6 +81,7 @@ export function HourlyScroll({ hours, units }: Props) {
         </p>
       ) : (
         <div
+          ref={listRef}
           role="list"
           tabIndex={0}
           aria-label="Hourly forecast times"
@@ -68,7 +89,7 @@ export function HourlyScroll({ hours, units }: Props) {
           className="focus-ring -mx-4 flex gap-4 overflow-x-auto px-4 pb-2 scroll-slim sm:-mx-6 sm:px-6 md:mx-0 md:px-0 md:pb-0"
         >
           {rows.map((hour, index) => {
-            const now = Boolean(hour.time?.trim()) && isCurrentHour(hour.time);
+            const now = index === nowIndex;
             const description =
               hour.weather_description?.trim() || "Conditions unavailable";
             const temperature = isFiniteNumber(hour.temperature)
@@ -80,8 +101,10 @@ export function HourlyScroll({ hours, units }: Props) {
 
             return (
               <article
+                ref={now ? nowRef : undefined}
                 role="listitem"
                 key={hour.time?.trim() ? hour.time : `hour-${index}`}
+                aria-current={now ? "true" : undefined}
                 aria-label={`${timeLabel}: ${description}, ${temperature}${precipLabel}`}
                 className={`flex w-20 shrink-0 flex-col items-center rounded-card border px-2 py-3 text-center ${
                   now ? "border-accent/40 bg-surface" : "border-border bg-surface"

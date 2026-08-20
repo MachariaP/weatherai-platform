@@ -6,7 +6,11 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { HourlyScroll } from "@/components/weather/HourlyScroll";
 import type { HourlyForecast } from "@/lib/types";
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.useRealTimers();
+  vi.restoreAllMocks();
+});
 
 const HOURS: HourlyForecast[] = [
   {
@@ -31,6 +35,16 @@ const HOURS: HourlyForecast[] = [
     weather_description: "Overcast",
   },
 ];
+
+function hoursForDay(date = "2026-08-20"): HourlyForecast[] {
+  return Array.from({ length: 24 }, (_, i) => ({
+    time: `${date}T${String(i).padStart(2, "0")}:00`,
+    temperature: i,
+    precipitation: 0,
+    weather_code: 1,
+    weather_description: `Hour ${i}`,
+  }));
+}
 
 describe("HourlyScroll", () => {
   it("renders normal hourly data", () => {
@@ -129,5 +143,90 @@ describe("HourlyScroll", () => {
     expect(scrollBy).toHaveBeenCalledWith({ left: -108, behavior: "smooth" });
     expect(scrollTo).toHaveBeenCalledWith({ left: 0, behavior: "smooth" });
     expect(scrollTo).toHaveBeenCalledWith({ left: 900, behavior: "smooth" });
+  });
+
+  it("aligns the Now card to the start of the strip on load", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-20T12:30:00"));
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(
+      function mockRect(this: HTMLElement) {
+        const left =
+          this.getAttribute("aria-current") === "true"
+            ? 480
+            : this.getAttribute("role") === "list"
+              ? 16
+              : 0;
+        return {
+          x: left,
+          y: 0,
+          width: 80,
+          height: 80,
+          top: 0,
+          right: left + 80,
+          bottom: 80,
+          left,
+          toJSON() {
+            return this;
+          },
+        };
+      }
+    );
+
+    render(<HourlyScroll hours={hoursForDay()} units="metric" />);
+    const list = screen.getByRole("list", { name: "Hourly forecast times" });
+
+    expect(screen.getByText("Now")).toBeDefined();
+    expect(screen.getByRole("listitem", { current: true }).textContent).toContain(
+      "Now"
+    );
+    expect(list.scrollLeft).toBe(464);
+  });
+
+  it("realigns Now when hourly data is replaced after a refresh", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-20T12:30:00"));
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(
+      function mockRect(this: HTMLElement) {
+        const left =
+          this.getAttribute("aria-current") === "true" ? 320 : 0;
+        return {
+          x: left,
+          y: 0,
+          width: 80,
+          height: 80,
+          top: 0,
+          right: left + 80,
+          bottom: 80,
+          left,
+          toJSON() {
+            return this;
+          },
+        };
+      }
+    );
+
+    const first = hoursForDay();
+    const { rerender } = render(<HourlyScroll hours={first} units="metric" />);
+    const list = screen.getByRole("list", { name: "Hourly forecast times" });
+    expect(list.scrollLeft).toBe(320);
+
+    list.scrollLeft = 80;
+    rerender(<HourlyScroll hours={first} units="metric" />);
+    expect(list.scrollLeft).toBe(80);
+
+    rerender(<HourlyScroll hours={[...first]} units="metric" />);
+    expect(list.scrollLeft).toBe(400);
+  });
+
+  it("does not auto-scroll when no hour is the current hour", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-01-01T08:00:00"));
+
+    render(<HourlyScroll hours={hoursForDay()} units="metric" />);
+    const list = screen.getByRole("list", { name: "Hourly forecast times" });
+
+    expect(screen.queryByText("Now")).toBeNull();
+    expect(screen.queryByRole("listitem", { current: true })).toBeNull();
+    expect(list.scrollLeft).toBe(0);
   });
 });
