@@ -8,9 +8,9 @@ import {
   type ReactNode,
 } from "react";
 
-type Units = "metric" | "imperial";
+export type Units = "metric" | "imperial";
 
-interface PreferencesContextValue {
+export interface PreferencesContextValue {
   units: Units;
   aiEnabled: boolean;
   setUnits: (u: Units) => void;
@@ -45,6 +45,12 @@ function subscribeAi(cb: () => void) {
   };
 }
 
+/**
+ * User display preferences.
+ *
+ * Units default to metric. AI summaries stay off until the user opts in,
+ * because upstream AI data is optional and quota-limited.
+ */
 export function PreferencesProvider({ children }: { children: ReactNode }) {
   const units = useSyncExternalStore(subscribeUnits, getStoredUnits, () => "metric" as Units);
   const aiEnabled = useSyncExternalStore(subscribeAi, getStoredAi, () => false);
