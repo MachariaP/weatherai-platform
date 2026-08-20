@@ -80,7 +80,7 @@ test.describe("weather preferences and refresh", () => {
     const daily = page.getByRole("region", { name: "7-day forecast" });
     await expect(daily.getByText("2 mm")).toBeVisible();
     await expect(daily.getByText("0 mm")).toBeVisible();
-    const fogDay = page.getByRole("article", { name: /Fog/ });
+    const fogDay = daily.getByRole("button", { name: /Fog/ });
     await expect(fogDay).toBeVisible();
     await expect(fogDay.getByText("0 mm")).toHaveCount(0);
 

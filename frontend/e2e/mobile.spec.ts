@@ -38,5 +38,12 @@ test.describe("mobile smoke", () => {
     await expect(page.getByRole("group", { name: "Forecast range" })).toBeVisible();
     const threeDays = await page.getByRole("button", { name: "3 days" }).boundingBox();
     expect(threeDays?.height ?? 0).toBeGreaterThanOrEqual(40);
+
+    await page.getByRole("button", { name: /Slight rain, high/ }).click();
+    const sheet = page.getByRole("dialog");
+    await expect(sheet).toBeVisible();
+    await expect(sheet.getByRole("button", { name: "Close forecast day" })).toBeVisible();
+    await sheet.getByRole("button", { name: "Close forecast day" }).click();
+    await expect(sheet).toHaveCount(0);
   });
 });
