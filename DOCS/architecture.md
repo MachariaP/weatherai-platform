@@ -102,6 +102,15 @@ Photon / ipwho.is into the same `{ lat, lon, label }` application shape.
 When an upstream shape changes, only the FastAPI adapter for that provider
 changes — the browser still never sees provider JSON.
 
+Daily and hourly `precipitation` is an **amount** (`float | null`): `0.0` is
+verified zero; `null` means the upstream value was missing. Missing is never
+normalized to `0.0`. This field is not a precipitation probability.
+
+`current.observed_at` is the upstream observation timestamp string, passed
+through unchanged. Manual Refresh reissues `GET /weather` and respects the
+FastAPI TTL cache (`X-Cache: HIT` during TTL is honest). The browser does not
+bypass or invalidate that cache.
+
 ## Location identity
 
 **Coordinates are the weather identity.** A city name is search/display

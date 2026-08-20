@@ -63,10 +63,30 @@ and never call WeatherAI, Photon, or the IP-lookup provider.
 }
 ```
 
+`daily[].precipitation` and `hourly[].precipitation` are **amounts**, not
+probabilities. Do not treat them as a chance of rain.
+
+| JSON | Meaning |
+|---|---|
+| `"precipitation": 0` or `0.0` | Verified zero precipitation |
+| `"precipitation": 2.7` | Verified amount in the response `units` (`mm` metric, `in` imperial) |
+| `"precipitation": null` | Upstream value unavailable — UI must not display `0` |
+
+`current.observed_at` is passed through from WeatherAI `current.time`. Typical
+values are timezone-naive ISO-like strings (`2026-08-19T12:00`). The UI prints
+those clock digits (`Observed 12:00`) and does not convert them to the selected
+location's timezone.
+
 Optional current extras (`feels_like`, `humidity`, `uv_index`, `pressure`,
 `precip_last_24h`) and `place_name` are nullable. The UI hides tiles when they
 are null. WeatherAI is always called with coordinates only. `place_name` comes
 from FastAPI reverse geocoding (Photon), not from WeatherAI.
+
+**Manual refresh:** the dashboard Refresh control reissues the same
+`GET /api/weather` request (`cache: "no-store"` on Next.js). It does **not**
+bypass FastAPI's TTL cache, does not send `refresh`/`force`/`no_cache` query
+params, and does not invalidate cache from the browser. A response with
+`X-Cache: HIT` during TTL is correct.
 
 **Headers:**
 

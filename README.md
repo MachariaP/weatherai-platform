@@ -78,7 +78,8 @@ frontend lint, `tsc --noEmit`, and vitest on every push and pull request.
 ## Features
 
 - Current weather with temperature, wind, and conditions
-- 7-day forecast and hourly outlook
+- 7-day forecast and hourly outlook with precipitation amounts when available
+- Observed time and Refresh (revalidates through FastAPI cache; does not force WeatherAI)
 - Place-name search with multiple suggestions (Photon via FastAPI)
 - Recent locations (localStorage, max 8; weather payloads are never stored)
 - Shareable `/?lat=&lon=` URLs (coordinates are canonical)
@@ -111,7 +112,12 @@ Query parameters: `lat` (required), `lon` (required), `days` (1-7),
 - **Coordinates are identity**: shareable URLs are `/?lat=&lon=`. Place names are not the weather key.
 - **Recent locations**: `localStorage` only (max 8). Weather payloads are never stored there.
 - **IP geolocation**: used only after GPS fails without a permission denial. FastAPI calls the lookup provider; the browser never sees that URL or the IP.
-- **Hide missing metrics**: humidity, UV, pressure, feels-like, and 24h precip tiles render only when FastAPI sent a value.
+- **Hide missing metrics**: humidity, UV, pressure, feels-like, 24h precip, and
+  daily/hourly precipitation amounts render only when FastAPI sent a legitimate
+  value. `0` is shown; `null` is not displayed as `0`. Precipitation is an
+  amount, not a probability.
+- **Refresh respects FastAPI TTL**: Refresh reissues the normal weather request.
+  `X-Cache: HIT` during TTL is correct; the browser does not bypass the cache.
 
 ## Documentation
 

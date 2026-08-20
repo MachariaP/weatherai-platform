@@ -17,7 +17,10 @@ Phase-by-phase plan for the WeatherAI QA project.
 - Deployment is **NOT DEPLOYED / NOT VERIFIED** — see `deployment.md`.
 - **Phase A0 + A (location discovery)** — stabilize existing geocode/UI work,
   then add suggestion lists, recent locations, and shareable `/?lat=&lon=`
-  URLs. Later phases (precip, Playwright, Redis, deploy) are not in this
+  URLs.
+- **Phase B (precipitation + refresh)** — honest optional precipitation
+  amounts (zero is data; missing is not zero) and a last-updated / Refresh
+  control that respects the FastAPI TTL cache. Later phases are not in this
   increment.
 
 ---

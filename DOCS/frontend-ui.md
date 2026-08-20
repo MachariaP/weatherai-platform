@@ -113,6 +113,15 @@ Always: wind (on contract). Conditionally, only if FastAPI sent a finite
 value: `precip_last_24h`, `humidity`, `uv_index`, `pressure`, feels-like
 line. Never invent humidity, UV, pressure trend (“Falling”), or feels-like.
 
+Daily and hourly forecast rows show precipitation **amount** (mm or in from
+the contract) when the value is finite, including verified `0`. Null amounts
+are omitted. The field is never shown as a percent.
+
+`Observed HH:MM` uses clock digits from `current.observed_at` when present.
+Refresh reissues `/api/weather` and may return `X-Cache: HIT`. Existing
+weather stays on screen during a manual refresh; a location change still
+clears stale weather immediately.
+
 Hero heading: `place_name` when reverse geocode succeeded, else the
 location label. Subtitle is always `lat, lon` at 4 decimals.
 
