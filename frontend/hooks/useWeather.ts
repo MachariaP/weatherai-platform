@@ -48,10 +48,12 @@ export function useWeather(
   const abortRef = useRef<AbortController | null>(null);
 
   const refetch = useCallback(() => setTick((t) => t + 1), []);
+  const locationKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (lat === null || lon === null) {
       abortRef.current?.abort();
+      locationKeyRef.current = null;
       return;
     }
 
@@ -59,6 +61,10 @@ export function useWeather(
     const controller = new AbortController();
     abortRef.current = controller;
     let cancelled = false;
+
+    const nextLocationKey = `${lat},${lon}`;
+    const locationChanged = locationKeyRef.current !== nextLocationKey;
+    locationKeyRef.current = nextLocationKey;
 
     const params = new URLSearchParams({
       lat: String(lat),
@@ -70,6 +76,10 @@ export function useWeather(
     const run = async () => {
       setIsLoading(true);
       setError(null);
+      if (locationChanged) {
+        setData(null);
+        setCacheStatus(null);
+      }
 
       try {
         const res = await fetch(`/api/weather?${params}`, {
@@ -92,7 +102,19 @@ export function useWeather(
             setData(null);
           }
         } else {
-          const json: WeatherResponse = await res.json();
+          let json: WeatherResponse;
+          try {
+            json = await res.json();
+          } catch {
+            if (!cancelled) {
+              setError({
+                error: "malformed_response",
+                message: "Backend returned an unexpected response",
+              });
+              setData(null);
+            }
+            return;
+          }
           if (!cancelled) {
             setData(json);
             setError(null);
