@@ -3,17 +3,16 @@
 import { useLocation } from "@/components/providers/LocationProvider";
 import { usePreferences } from "@/components/providers/PreferencesProvider";
 import { useWeather } from "@/hooks/useWeather";
-import { LocationStatus } from "@/components/shell/LocationStatus";
+import { EmptyState } from "./EmptyState";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
+import { WeatherLoading } from "@/components/ui/LoadingSkeleton";
 import { CurrentWeather } from "./CurrentWeather";
 import { AISummary } from "./AISummary";
 import { HourlyScroll } from "./HourlyScroll";
 import { ForecastGrid } from "./ForecastGrid";
 
 /**
- * Current conditions plus daily and hourly outlook from the public contract.
- *
- * Does not render skeleton layouts or city search.
+ * Async weather states: empty, loading, success, error, and partial data.
  */
 export function CurrentConditionsView() {
   const { location } = useLocation();
@@ -26,15 +25,11 @@ export function CurrentConditionsView() {
   );
 
   if (!location) {
-    return <LocationStatus />;
+    return <EmptyState />;
   }
 
   if (!data && !error) {
-    return (
-      <p role="status" className="pt-8 text-sm text-text-secondary">
-        Loading current weather…
-      </p>
-    );
+    return <WeatherLoading showAi={aiEnabled} />;
   }
 
   if (error && !data) {

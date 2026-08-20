@@ -4,38 +4,38 @@ import { useLocation } from "@/components/providers/LocationProvider";
 import { WeatherIcon } from "@/lib/weather-icons";
 import { AlertIcon, CrosshairIcon, MapPinIcon } from "@/components/ui/icons";
 
-const CAPABILITIES = ["7-day forecast", "Hourly outlook", "AI insights"];
+const CAPABILITIES = ["Current conditions", "7-day forecast", "Hourly outlook"];
 
 export function EmptyState() {
   const { detectLocation, detecting, error } = useLocation();
 
-  function scrollToSearch() {
-    document.getElementById("weather-search")?.scrollIntoView({
+  function focusCoordinateSearch() {
+    const form = document.getElementById("weather-search");
+    form?.scrollIntoView?.({
       behavior: "smooth",
       block: "center",
     });
-    (
-      document.getElementById("weather-lat") as HTMLInputElement | null
-    )?.focus({ preventScroll: true });
+    document.getElementById("weather-lat")?.focus({ preventScroll: true });
   }
 
   return (
     <section
-      aria-label="Getting started"
-      className="flex flex-col items-center pb-10 pt-14 text-center sm:pt-20"
+      aria-label="Look up the weather"
+      className="flex flex-col items-center pb-10 pt-10 text-center sm:pt-16"
     >
       <div
         aria-hidden="true"
-        className="mb-8 grid h-40 w-40 place-items-center rounded-full border border-border bg-surface"
+        className="mb-8 grid h-28 w-28 place-items-center rounded-full border border-border bg-surface sm:h-32 sm:w-32"
       >
-        <WeatherIcon name="partly-day" className="h-24 w-24 text-accent" />
+        <WeatherIcon name="partly-day" className="h-16 w-16 text-accent sm:h-20 sm:w-20" />
       </div>
 
-      <h2 className="text-2xl font-semibold tracking-tight text-text sm:text-3xl">
-        Your weather, at a glance.
-      </h2>
+      <h1 className="text-2xl font-semibold tracking-tight text-text sm:text-3xl">
+        Look up the weather
+      </h1>
       <p className="mt-2 max-w-md text-text-secondary">
-        Enter coordinates or use your location to get started.
+        Enter a latitude and longitude, or use your current location. City search
+        is not available.
       </p>
 
       <div className="mt-7 flex flex-col gap-3 sm:flex-row">
@@ -48,7 +48,7 @@ export function EmptyState() {
           {detecting ? (
             <span
               aria-hidden="true"
-              className="h-4 w-4 animate-spin rounded-full border-2 border-background/30 border-t-background"
+              className="h-4 w-4 rounded-full border-2 border-background/30 border-t-background motion-safe:animate-spin"
             />
           ) : (
             <CrosshairIcon className="h-4 w-4" />
@@ -57,7 +57,7 @@ export function EmptyState() {
         </button>
         <button
           type="button"
-          onClick={scrollToSearch}
+          onClick={focusCoordinateSearch}
           className="focus-ring inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-border bg-surface px-5 text-sm font-medium text-text-secondary shadow-card transition-colors hover:border-border-strong hover:text-text"
         >
           <MapPinIcon className="h-4 w-4" />
@@ -76,15 +76,15 @@ export function EmptyState() {
         ))}
       </div>
 
-      {error && (
+      {error ? (
         <p
-          role="status"
+          role="alert"
           className="mt-6 inline-flex items-center gap-2 rounded-lg border border-warning/25 bg-warning/10 px-3 py-1.5 text-sm text-warning"
         >
           <AlertIcon className="h-4 w-4 shrink-0" />
           {error}
         </p>
-      )}
+      ) : null}
     </section>
   );
 }

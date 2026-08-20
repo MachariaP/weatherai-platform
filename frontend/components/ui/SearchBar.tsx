@@ -45,6 +45,7 @@ export function SearchBar() {
 
   return (
     <form
+      id="weather-search"
       onSubmit={handleSubmit}
       noValidate
       aria-label="Search by coordinates"
