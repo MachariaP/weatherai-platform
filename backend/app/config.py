@@ -7,7 +7,7 @@ independently.
 """
 from functools import lru_cache
 
-from pydantic import field_validator
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -29,6 +29,10 @@ class Settings(BaseSettings):
     weatherai_timeout: float = 10.0
     weatherai_max_retries: int = 3
     cors_origins: str = "http://localhost:3000"
+    rate_limit_requests: int = Field(default=60, ge=1)
+    rate_limit_window_seconds: float = Field(default=60.0, gt=0)
+    circuit_failure_threshold: int = Field(default=5, ge=1)
+    circuit_cooldown_seconds: float = Field(default=30.0, gt=0)
 
     model_config = SettingsConfigDict(env_file=".env")
 

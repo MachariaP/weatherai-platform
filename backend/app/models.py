@@ -208,7 +208,7 @@ _API_ERROR_DESCRIPTIONS: dict[int, str] = {
     404: "Not found",
     429: "Rate limit",
     502: "Upstream or processing error",
-    503: "Location service unavailable",
+    503: "Upstream or location service unavailable",
     504: "Upstream timeout",
 }
 
@@ -223,10 +223,16 @@ def api_error_responses(*status_codes: int) -> dict[int, dict]:
         }
         if code == 429:
             entry["headers"] = {
+                "Retry-After": {
+                    "description": (
+                        "Seconds to wait after an application-level rate limit"
+                    ),
+                    "schema": {"type": "string"},
+                },
                 "X-RateLimit-Reset": {
                     "description": "Unix epoch when the upstream quota resets, if known",
                     "schema": {"type": "string"},
-                }
+                },
             }
         responses[code] = entry
     return responses
