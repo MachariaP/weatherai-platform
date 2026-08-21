@@ -136,7 +136,8 @@ are omitted. The field is never shown as a percent.
 
 `Observed HH:MM` uses clock digits from `current.observed_at` when present.
 It is observation metadata for the current-condition snapshot, not the
-selected forecast hour. Missing `observed_at` omits the visible label
+selected forecast hour. Cache freshness (`Cached` / `Live`) sits beside
+Observed with Refresh. Missing `observed_at` omits the visible label
 (screen readers still hear that observation time is unavailable). Refresh
 reissues `/api/weather` and may return `X-Cache: HIT`. Existing weather
 stays on screen during a manual refresh; a location change still clears
@@ -152,12 +153,17 @@ products. The UI does not force them to match.
 
 Custom SVG (no chart library). Dashboard strip, scrubber, and chart share
 one **next 24 hourly rows from the current hour** (or from the first row
-if none match). Fallback first-row starts are not labeled Now. Forecast-day
-drill-down still plots **all hourly rows for that date**, including morning
-hours for that day. Temperature is the default metric. Precipitation is
-offered only when at least one finite amount exists, including verified
-`0`. Hourly wind is not on the public contract, so it is not a tab. Values
-are not converted.
+if none match), presented as one **Next 24 hours** group. Fallback first-row
+starts are not labeled Now. Forecast-day drill-down still plots **all hourly
+rows for that date**, including morning hours for that day. Temperature is
+the default metric. Precipitation is offered only when at least one finite
+amount exists, including verified `0`. Hourly wind is not on the public
+contract, so it is not a tab. Values are not converted.
+
+The hourly strip shows a surface-colored edge fade when more hours remain
+to the left or right. Selecting an hour scrolls only the strip, never the
+page. The chart keeps a dashed **NOW** marker on the actual current hour and
+a separate solid selected marker when a future hour is previewed.
 
 The dashboard stacks current conditions, hourly, and the daily list below
 `lg` (1024px) so forecast labels stay readable around 768–900px. From `lg`

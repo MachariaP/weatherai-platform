@@ -97,8 +97,9 @@ Time semantics add Vitest for `observed_at` clock digits, missing observation
 time, current vs hourly-Now temperatures, the shared next-24 window (including
 fallback without a Now label), and cross-day `Tomorrow` / `+1d` caps.
 Playwright covers Observed HH:MM, the Next 24 hours heading, a tomorrow end
-cap, scrubbing a future hour without changing Observed, strip/chart sync, and
-no mobile overflow. Fixtures stay mocked `/api/*`.
+cap, scrubbing a future hour without changing Observed, strip/chart sync with
+a stationary Now marker, hourly strip edge fades, and no mobile overflow.
+Fixtures stay mocked `/api/*`.
 
 Lower-level storage, limit, and preference fallback details stay in Vitest.
 
