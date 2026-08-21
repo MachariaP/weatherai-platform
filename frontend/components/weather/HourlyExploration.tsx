@@ -3,9 +3,11 @@
 import { useMemo, useState } from "react";
 import type { HourlyForecast } from "@/lib/types";
 import {
+  formatHourlyClock,
   formatPrecipAmount,
   formatSelectedHourLabel,
   formatTemp,
+  formatWindowEndLabel,
   hourRelation,
   isCurrentHour,
   type Units,
@@ -51,6 +53,14 @@ export function HourlyExploration({ hours, units, onExploreHour }: Props) {
   const exploreHeading = selected?.time
     ? formatSelectedHourLabel(selected.time)
     : null;
+  const endCap =
+    windowHours.length > 0
+      ? formatWindowEndLabel(
+          windowHours[0]?.time,
+          windowHours[windowHours.length - 1]?.time,
+          false
+        )
+      : "";
 
   function selectTime(time: string) {
     setSelectedTime(time);
@@ -59,7 +69,25 @@ export function HourlyExploration({ hours, units, onExploreHour }: Props) {
   }
 
   return (
-    <div className="flex min-w-0 flex-col gap-6">
+    <section aria-label="Next 24 hours" className="flex min-w-0 flex-col gap-4">
+      <header className="flex min-w-0 flex-wrap items-baseline justify-between gap-2">
+        <div className="min-w-0">
+          <h2 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-text-secondary">
+            Next 24 hours
+          </h2>
+          {endCap ? (
+            <p className="mt-1 text-xs text-text-muted">Through {endCap}</p>
+          ) : null}
+        </div>
+        {selected?.time ? (
+          <p className="text-xs font-medium tabular-nums text-text" aria-live="polite">
+            {hourRelation(selected.time) === "now"
+              ? `Now · ${formatHourlyClock(selected.time)}`
+              : formatSelectedHourLabel(selected.time)}
+          </p>
+        ) : null}
+      </header>
+
       {exploringAway && selected && exploreHeading ? (
         <p
           role="status"
@@ -77,24 +105,30 @@ export function HourlyExploration({ hours, units, onExploreHour }: Props) {
             : ""}
         </p>
       ) : null}
-      <HourlyScroll
-        hours={windowHours}
-        units={units}
-        selectedTime={activeTime}
-        onSelectTime={selectTime}
-      />
-      <TimelineScrubber
-        hours={windowHours}
-        selectedTime={activeTime}
-        onSelectTime={selectTime}
-      />
-      <HourlyChart
-        hours={windowHours}
-        units={units}
-        range="all"
-        selectedTime={activeTime}
-        onSelectTime={selectTime}
-      />
-    </div>
+
+      <div className="flex min-w-0 flex-col gap-4 rounded-card border border-border bg-surface/60 p-3 sm:p-4">
+        <HourlyScroll
+          hours={windowHours}
+          units={units}
+          selectedTime={activeTime}
+          onSelectTime={selectTime}
+          showHeading={false}
+        />
+        <TimelineScrubber
+          hours={windowHours}
+          selectedTime={activeTime}
+          onSelectTime={selectTime}
+          embedded
+        />
+        <HourlyChart
+          hours={windowHours}
+          units={units}
+          range="all"
+          selectedTime={activeTime}
+          onSelectTime={selectTime}
+          embedded
+        />
+      </div>
+    </section>
   );
 }

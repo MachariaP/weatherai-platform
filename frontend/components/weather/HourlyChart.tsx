@@ -20,6 +20,8 @@ interface Props {
   range?: "next24" | "all";
   selectedTime?: string | null;
   onSelectTime?: (time: string) => void;
+  /** Nested inside the Next 24 hours group — quieter chrome. */
+  embedded?: boolean;
 }
 
 const VIEW_W = 640;
@@ -71,6 +73,7 @@ export function HourlyChart({
   range = "next24",
   selectedTime = null,
   onSelectTime,
+  embedded = false,
 }: Props) {
   const windowHours = useMemo(() => {
     if (range === "all") {
@@ -112,8 +115,17 @@ export function HourlyChart({
   const summary = chartSummary(points, shownMetric, units);
   const hoverPoint = hover !== null ? points[hover] : null;
   const tip = hoverPoint ? tooltipFields(hoverPoint, units) : [];
-  const hoverPlotted = plotted.find((row) => row.index === hover);
+  const tipPlotted = hover !== null ? plotted.find((row) => row.index === hover) : null;
   const emphasis = hover ?? (selectedIndex >= 0 ? selectedIndex : null);
+  const showSelectedLine =
+    selectedIndex >= 0 && selectedIndex !== nowPoint && hover === null;
+  const selectedPoint = selectedIndex >= 0 ? points[selectedIndex] : null;
+  const selectedAnnouncement =
+    selectedPoint && !selectedPoint.isNow
+      ? tooltipFields(selectedPoint, units)
+          .map((field) => `${field.label}: ${field.value}`)
+          .join(". ")
+      : null;
 
   function selectIndex(index: number) {
     const point = points[index];
@@ -153,7 +165,13 @@ export function HourlyChart({
   return (
     <section aria-label="Hourly evolution" className="min-w-0">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-text-muted">
+        <h2
+          className={
+            embedded
+              ? "text-[11px] font-semibold uppercase tracking-[0.14em] text-text-muted"
+              : "text-[11px] font-semibold uppercase tracking-[0.14em] text-text-secondary"
+          }
+        >
           Hourly evolution
         </h2>
         {points.length > 0 ? (
@@ -199,13 +217,19 @@ export function HourlyChart({
           Hourly evolution is not available.
         </p>
       ) : (
-        <div className="relative overflow-hidden rounded-card border border-border bg-surface px-2 py-3 sm:px-3">
+        <div
+          className={`relative overflow-hidden px-2 py-3 sm:px-3 ${
+            embedded
+              ? "rounded-control border border-border/70 bg-card"
+              : "rounded-card border border-border bg-surface"
+          }`}
+        >
           <p className="sr-only">{summary}</p>
           <svg
             viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
             role="img"
             tabIndex={0}
-            aria-label={summary}
+            aria-label={selectedAnnouncement ? `${summary} Selected: ${selectedAnnouncement}` : summary}
             onPointerMove={onPointer}
             onPointerDown={onPointer}
             onPointerLeave={() => setHover(null)}
@@ -256,6 +280,7 @@ export function HourlyChart({
                   stroke="currentColor"
                   strokeDasharray="3 3"
                   strokeOpacity="0.45"
+                  data-testid="chart-now-marker"
                 />
                 <text
                   x={xFor(nowPoint, points.length) + 4}
@@ -267,6 +292,18 @@ export function HourlyChart({
                   NOW
                 </text>
               </>
+            ) : null}
+            {showSelectedLine ? (
+              <line
+                x1={xFor(selectedIndex, points.length)}
+                x2={xFor(selectedIndex, points.length)}
+                y1={PAD.top}
+                y2={VIEW_H - PAD.bottom}
+                stroke="currentColor"
+                strokeOpacity="0.35"
+                strokeWidth="1.25"
+                data-testid="chart-selected-marker"
+              />
             ) : null}
             {linePath ? (
               <path
@@ -314,13 +351,13 @@ export function HourlyChart({
                   </text>
                 ))}
           </svg>
-          {hoverPoint && hoverPlotted ? (
+          {hoverPoint && tipPlotted ? (
             <div
               role="status"
               className="pointer-events-none absolute z-10 max-w-[12rem] rounded-control border border-border bg-background px-2.5 py-2 text-xs text-text shadow-none"
               style={{
-                left: `clamp(0.5rem, ${(hoverPlotted.x / VIEW_W) * 100}% - 4.5rem, calc(100% - 12.5rem))`,
-                top: `clamp(0.25rem, ${(hoverPlotted.y / VIEW_H) * 100}% - 4.5rem, calc(100% - 7rem))`,
+                left: `clamp(0.5rem, ${(tipPlotted.x / VIEW_W) * 100}% - 4.5rem, calc(100% - 12.5rem))`,
+                top: `clamp(0.25rem, ${(tipPlotted.y / VIEW_H) * 100}% - 4.5rem, calc(100% - 7rem))`,
               }}
             >
               {tip.map((field) => (
