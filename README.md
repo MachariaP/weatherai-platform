@@ -20,6 +20,7 @@ A full-stack weather exploration app built as a WeatherAI API integration and QA
 12. [Engineering Decisions](#12-engineering-decisions)
 13. [Documentation](#13-documentation)
 14. [Known Limitations](#14-known-limitations)
+15. [License](#license)
 
 ---
 
@@ -385,11 +386,12 @@ npm run test:e2e                  # builds locally, then next start on :3100
 - **Optional current extras** — feels-like, humidity, UV, pressure, 24h precip appear only when FastAPI can populate them
 - **Timezone-naive timestamps** — public `observed_at` / hourly `time` strings have no timezone metadata. Observed prints raw clock digits. Hourly **Now** is the bucket matching `observed_at`'s naive date/hour (not the browser clock). Provider timezone meaning (location-local vs UTC) remains undocumented and is not invented.
 - **Frontend-only types** remain handwritten (UI state, preferences, Playwright fixtures)
-- **No LICENSE file** is present in this repository
 - **No continuous deployment** — CI verifies quality only
 
 ---
 
 ## License
 
-No license file is included in this repository at this time.
+This project is licensed under the [MIT License](LICENSE).
+
+Copyright (c) 2026 Phinehas Macharia.
