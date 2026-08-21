@@ -421,6 +421,89 @@ describe("CurrentConditionsView", () => {
     searchNairobi();
     await waitFor(() => expect(screen.getByRole("button", { name: "Refresh" })).toBeDefined());
     expect(screen.queryByText(/Observed /)).toBeNull();
+    expect(screen.getByText("Observation time unavailable")).toBeDefined();
+  });
+
+  it("keeps current temperature independent of the hourly Now value", async () => {
+    const now = new Date();
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const stamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:00`;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        jsonResponse({
+          ...MOCK_WEATHER,
+          current: {
+            ...MOCK_WEATHER.current,
+            temperature: 18,
+            observed_at: "2026-08-21T09:45",
+          },
+          hourly: [
+            {
+              time: stamp,
+              temperature: 17,
+              precipitation: 0,
+              weather_code: 3,
+              weather_description: "Overcast",
+            },
+          ],
+        })
+      )
+    );
+    render(<CurrentConditionsView />, { wrapper });
+    searchNairobi();
+    await waitFor(() => expect(screen.getByText("Observed 09:45")).toBeDefined());
+    expect(screen.getByRole("region", { name: "Current weather" }).textContent).toContain("18°");
+    expect(screen.getByRole("region", { name: "Hourly forecast" }).textContent).toContain("17°");
+  });
+
+  it("does not change Observed when the hourly scrubber moves", async () => {
+    const now = new Date();
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const currentStamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:00`;
+    const later = new Date(now);
+    later.setHours(later.getHours() + 1);
+    const laterStamp = `${later.getFullYear()}-${pad(later.getMonth() + 1)}-${pad(later.getDate())}T${pad(later.getHours())}:00`;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        jsonResponse({
+          ...MOCK_WEATHER,
+          current: {
+            ...MOCK_WEATHER.current,
+            temperature: 18,
+            observed_at: "2026-08-21T09:45",
+          },
+          hourly: [
+            {
+              time: currentStamp,
+              temperature: 17,
+              precipitation: 0,
+              weather_code: 3,
+              weather_description: "Overcast",
+            },
+            {
+              time: laterStamp,
+              temperature: 21,
+              precipitation: 0,
+              weather_code: 61,
+              weather_description: "Slight rain",
+            },
+          ],
+        })
+      )
+    );
+    render(<CurrentConditionsView />, { wrapper });
+    searchNairobi();
+    await waitFor(() => expect(screen.getByText("Observed 09:45")).toBeDefined());
+    fireEvent.change(screen.getByRole("slider", { name: "Hourly weather timeline" }), {
+      target: { value: "1" },
+    });
+    expect(screen.getAllByText(/Forecast at/).length).toBeGreaterThan(0);
+    expect(
+      screen.getByRole("slider", { name: "Hourly weather timeline" }).getAttribute("aria-valuetext")
+    ).toMatch(/^Forecast at /);
+    expect(screen.getByText("Observed 09:45")).toBeDefined();
   });
 
   it("keeps current weather visible while a manual refresh is in flight", async () => {

@@ -65,6 +65,22 @@ describe("hourly chart adapters", () => {
     expect(nextHourlyWindow(HOURS)[0].time).toBe("2026-08-20T10:00");
   });
 
+  it("keeps a short series when fewer than 24 rows remain", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 7, 20, 11, 15, 0));
+    const windowed = nextHourlyWindow(HOURS);
+    expect(windowed.map((row) => row.time)).toEqual([
+      "2026-08-20T11:00",
+      "2026-08-20T12:00",
+    ]);
+  });
+
+  it("does not label a fallback first row as Now", () => {
+    const points = toChartPoints(HOURS);
+    expect(points[0].isNow).toBe(false);
+    expect(points[0].label).toBe("10:00");
+  });
+
   it("treats verified zero precipitation as available and null as absent", () => {
     expect(precipitationAvailable(HOURS)).toBe(true);
     expect(precipitationAvailable([HOURS[0]])).toBe(false);
