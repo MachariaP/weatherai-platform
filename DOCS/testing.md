@@ -93,6 +93,13 @@ Premium experience adds Vitest for atmosphere categories, shared hourly
 selection, and Now vs forecast scrubber semantics, plus Playwright journeys
 for strip/scrubber sync and a reduced-motion smoke.
 
+Time semantics add Vitest for `observed_at` clock digits, missing observation
+time, current vs hourly-Now temperatures, the shared next-24 window (including
+fallback without a Now label), and cross-day `Tomorrow` / `+1d` caps.
+Playwright covers Observed HH:MM, the Next 24 hours heading, a tomorrow end
+cap, scrubbing a future hour without changing Observed, strip/chart sync, and
+no mobile overflow. Fixtures stay mocked `/api/*`.
+
 Lower-level storage, limit, and preference fallback details stay in Vitest.
 
 Playwright is a **separate CI job** from lint/Vitest/`tsc` so Chromium install

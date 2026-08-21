@@ -41,10 +41,10 @@ app/layout.tsx                — Inter, providers, header, footer, mobile nav
 │   ├── CurrentWeather        — hero + hide-missing metric tiles
 │   ├── AISummary
 │   ├── ForecastGrid/Card     — daily rows; selected day opens ForecastDaySheet
-│   ├── HourlyScroll          — full hourly strip, current hour aligned
-│   ├── HourlyChart           — next-24h SVG evolution (temperature / precipitation)
-│   ├── HourlyExploration     — shared active hour: strip + scrubber + chart
-│   ├── TimelineScrubber      — Now vs forecast-at-hour control
+│   ├── HourlyScroll          — next-24 strip on dashboard; day hours in drill-down
+│   ├── HourlyChart           — same next-24 window as strip/scrubber (day hours in drill-down)
+│   ├── HourlyExploration     — shared activeTime: strip + scrubber + chart
+│   ├── TimelineScrubber      — Next 24 hours; Now vs forecast-at-hour control
 │   ├── WeatherAtmosphere     — CSS-only condition/is_day backdrop
 │   ├── CompareView           — explicit two-place comparison (ai omitted)
 │   └── SettingsPanel         — units + AI + saved places + compare entry
@@ -135,33 +135,50 @@ the contract) when the value is finite, including verified `0`. Null amounts
 are omitted. The field is never shown as a percent.
 
 `Observed HH:MM` uses clock digits from `current.observed_at` when present.
-Refresh reissues `/api/weather` and may return `X-Cache: HIT`. Existing
-weather stays on screen during a manual refresh; a location change still
-clears stale weather immediately.
+It is observation metadata for the current-condition snapshot, not the
+selected forecast hour. Missing `observed_at` omits the visible label
+(screen readers still hear that observation time is unavailable). Refresh
+reissues `/api/weather` and may return `X-Cache: HIT`. Existing weather
+stays on screen during a manual refresh; a location change still clears
+stale weather immediately.
 
 Hero heading: `place_name` when reverse geocode succeeded, else the
 location label. Subtitle is always `lat, lon` at 4 decimals.
 
-## Hourly evolution chart
+Current `temperature` and the hourly Now temperature are different
+products. The UI does not force them to match.
 
-Custom SVG (no chart library). Dashboard window is the **next 24 hourly rows
-from the current hour** (or from the first row if none match). Forecast-day
-drill-down plots **all hourly rows for that date**. Temperature is the
-default metric. Precipitation is offered only when at least one finite amount
-exists, including verified `0`. Hourly wind is not on the public contract, so
-it is not a tab. Values are not converted. The existing hourly strip still
-shows the longer raw timeline.
+## Hourly evolution — Next 24 hours
+
+Custom SVG (no chart library). Dashboard strip, scrubber, and chart share
+one **next 24 hourly rows from the current hour** (or from the first row
+if none match). Fallback first-row starts are not labeled Now. Forecast-day
+drill-down still plots **all hourly rows for that date**, including morning
+hours for that day. Temperature is the default metric. Precipitation is
+offered only when at least one finite amount exists, including verified
+`0`. Hourly wind is not on the public contract, so it is not a tab. Values
+are not converted.
 
 The dashboard stacks current conditions, hourly, and the daily list below
 `lg` (1024px) so forecast labels stay readable around 768–900px. From `lg`
 up, daily forecast sits in the right column.
 
-Hourly strip, timeline scrubber, and chart share one `selectedTime`. Selecting
-a strip card or chart point, or moving the scrubber, updates the others.
-Chart selection scrolls the matching card inside the strip (not the page).
-The hero remains **current** weather. A future hour is labeled
-`Forecast at HH:MM` and may preview that hour’s atmosphere. Returning to Now
-restores the current condition atmosphere.
+Hourly strip, **Next 24 hours** scrubber, and chart share one `activeTime`.
+Selecting a strip card or chart point, or moving the scrubber, updates the
+others. Chart selection scrolls the matching card inside the strip (not the
+page). The hero remains **current** weather. A future hour is labeled
+`Forecast at HH:MM` and may preview that hour’s atmosphere. A selectable
+past hour (drill-down) is `At HH:MM`, not a forecast. Returning to Now
+restores the current condition atmosphere. Observed time does not follow
+the scrubber.
+
+When the window crosses midnight, the scrubber end cap is `Tomorrow HH:MM`
+from `md` up, or `HH:MM +1d` on smaller viewports. Day comparison uses the
+naive `YYYY-MM-DD` prefix on the timestamps, not a timezone conversion.
+
+Timestamps on the public contract are timezone-naive. The UI prints clock
+digits as received and does not convert browser time, UTC, or location
+local time.
 
 ## Forecast-day drill-down
 
@@ -212,10 +229,12 @@ Landmarks (`header`, `main`, `footer`, labeled `nav`s), skip link,
 visible `:focus-visible` rings, labeled inputs, `role="switch"` / 
 `aria-pressed` on toggles. Bottom nav is `lg:hidden` so tablet keeps
 touch tabs; desktop Dashboard / Forecast live in the header from `lg` up.
-The hourly chart has a text summary and metric radios. The timeline scrubber
-is a labeled slider with `aria-valuetext` (Now vs forecast). Forecast
-drill-down is a dialog with focus trap, Escape, and a close button. Compare
-cards use per-location headings and independent loading/error status.
+The hourly chart has a text summary and metric radios. The Next 24 hours
+scrubber is a labeled slider with `aria-valuemin` / `aria-valuemax` /
+`aria-valuenow` / `aria-valuetext` (`Current conditions at HH:MM` vs
+`Forecast at HH:MM`). Forecast drill-down is a dialog with focus trap,
+Escape, and a close button. Compare cards use per-location headings and
+independent loading/error status.
 
 ## Deliberate constraints
 
