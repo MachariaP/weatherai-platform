@@ -57,6 +57,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.restoreAllMocks();
   vi.unstubAllEnvs();
 });
@@ -298,6 +299,47 @@ describe("fetchWeather", () => {
     }
   });
 
+  it("preserves backend 429 rate_limited", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        jsonResponse(
+          { error: "rate_limited", message: "Too many requests" },
+          { ok: false, status: 429 }
+        )
+      )
+    );
+
+    const result = await fetchWeather({ lat: 0, lon: 0 });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.status).toBe(429);
+      expect(result.error.error).toBe("rate_limited");
+    }
+  });
+
+  it("preserves backend 503 upstream_unavailable", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        jsonResponse(
+          {
+            error: "upstream_unavailable",
+            message: "Weather service is temporarily unavailable.",
+          },
+          { ok: false, status: 503 }
+        )
+      )
+    );
+
+    const result = await fetchWeather({ lat: 0, lon: 0 });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.status).toBe(503);
+      expect(result.error.error).toBe("upstream_unavailable");
+    }
+  });
+
   it("returns 503 when backend is unreachable", async () => {
     vi.stubGlobal(
       "fetch",
@@ -313,15 +355,116 @@ describe("fetchWeather", () => {
     }
   });
 
+  it("uses a 15_000 ms AbortSignal timeout for weather", async () => {
+    const timeoutSpy = vi.spyOn(AbortSignal, "timeout");
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(MOCK_WEATHER)));
+
+    await fetchWeather({ lat: 0, lon: 0 });
+
+    expect(timeoutSpy).toHaveBeenCalledWith(15_000);
+    expect(timeoutSpy).not.toHaveBeenCalledWith(8_000);
+  });
+
+  it("accepts a response that resolves within the weather timeout budget", async () => {
+    vi.useFakeTimers();
+    vi.spyOn(AbortSignal, "timeout").mockImplementation((ms: number) => {
+      const controller = new AbortController();
+      setTimeout(() => {
+        controller.abort(
+          new DOMException("The operation was aborted due to timeout", "TimeoutError")
+        );
+      }, ms);
+      return controller.signal;
+    });
+
+    const mockFetch = vi.fn(
+      (_url: string, init?: { signal?: AbortSignal }) =>
+        new Promise((resolve, reject) => {
+          const timer = setTimeout(() => resolve(jsonResponse(MOCK_WEATHER)), 14_000);
+          init?.signal?.addEventListener("abort", () => {
+            clearTimeout(timer);
+            reject(
+              init.signal?.reason ??
+                new DOMException("The operation was aborted due to timeout", "TimeoutError")
+            );
+          });
+        })
+    );
+    vi.stubGlobal("fetch", mockFetch);
+
+    const pending = fetchWeather({ lat: 0, lon: 0 });
+    await vi.advanceTimersByTimeAsync(14_000);
+    const result = await pending;
+
+    expect(result.ok).toBe(true);
+  });
+
+  it("returns 504 when the weather timeout elapses before the backend responds", async () => {
+    vi.useFakeTimers();
+    vi.spyOn(AbortSignal, "timeout").mockImplementation((ms: number) => {
+      const controller = new AbortController();
+      setTimeout(() => {
+        controller.abort(
+          new DOMException("The operation was aborted due to timeout", "TimeoutError")
+        );
+      }, ms);
+      return controller.signal;
+    });
+
+    const mockFetch = vi.fn(
+      (_url: string, init?: { signal?: AbortSignal }) =>
+        new Promise((_resolve, reject) => {
+          init?.signal?.addEventListener("abort", () => {
+            reject(
+              init.signal?.reason ??
+                new DOMException("The operation was aborted due to timeout", "TimeoutError")
+            );
+          });
+        })
+    );
+    vi.stubGlobal("fetch", mockFetch);
+
+    const pending = fetchWeather({ lat: 0, lon: 0 });
+    await vi.advanceTimersByTimeAsync(15_000);
+    const result = await pending;
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.status).toBe(504);
+      expect(result.error.error).toBe("backend_timeout");
+      expect(result.error.message).toBe("Backend did not respond in time");
+    }
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+  });
+
   it("returns 504 on timeout", async () => {
     const timeoutError = new DOMException("Signal timed out", "TimeoutError");
-    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(timeoutError));
+    const mockFetch = vi.fn().mockRejectedValue(timeoutError);
+    vi.stubGlobal("fetch", mockFetch);
 
     const result = await fetchWeather({ lat: 0, lon: 0 });
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.status).toBe(504);
       expect(result.error.error).toBe("backend_timeout");
+      expect(JSON.stringify(result.error)).not.toContain("BACKEND_URL");
+      expect(JSON.stringify(result.error)).not.toContain("weather-ai");
+      expect(JSON.stringify(result.error)).not.toContain("wai_");
+      expect(JSON.stringify(result.error)).not.toContain("Authorization");
+    }
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps the caller request ID on weather timeout", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockRejectedValue(new DOMException("Signal timed out", "TimeoutError"))
+    );
+
+    const result = await fetchWeather({ lat: 0, lon: 0 }, "trace-timeout-01");
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.requestId).toBe("trace-timeout-01");
     }
   });
 

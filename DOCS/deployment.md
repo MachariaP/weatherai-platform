@@ -135,6 +135,15 @@ Render free instances may sleep. On process start:
 
 That is expected for memory mode.
 
+## Next.js → FastAPI timeouts
+
+| Path | BFF timeout | Notes |
+|---|---|---|
+| `/api/weather` | 15 seconds | Above FastAPI's 10s WeatherAI timeout; does **not** wait out free-tier wake (~1 minute) |
+| `/api/geocode`, `/api/reverse`, `/api/geolocate` | 15 seconds | Compatible with Photon's ~12s upstream budget |
+
+WeatherAI timeouts are **not** retried by FastAPI. The BFF does not auto-retry either — use the UI Retry/Refresh after a temporary `backend_timeout`. A sleeping Render Free instance can still exceed 15 seconds; that remains an honest manual-retry case, not something the timeout absorbs.
+
 ## What Phase H must still do
 
 1. Create the Render web service with the start command above, `workers 1`.

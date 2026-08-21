@@ -19,7 +19,9 @@ import type {
   WeatherResponse,
 } from "./types";
 
-const BACKEND_TIMEOUT_MS = 8_000;
+// Keep the weather BFF budget above FastAPI's 10s upstream timeout
+// without attempting to absorb free-tier cold starts (~1 minute).
+const BACKEND_TIMEOUT_MS = 15_000;
 const GEOCODE_TIMEOUT_MS = 15_000;
 
 export type WeatherResult =
