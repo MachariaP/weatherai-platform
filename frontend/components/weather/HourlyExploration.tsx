@@ -3,9 +3,10 @@
 import { useMemo, useState } from "react";
 import type { HourlyForecast } from "@/lib/types";
 import {
-  formatHour24,
   formatPrecipAmount,
+  formatSelectedHourLabel,
   formatTemp,
+  hourRelation,
   isCurrentHour,
   type Units,
 } from "@/lib/format";
@@ -20,13 +21,6 @@ interface Props {
   onExploreHour?: (hour: HourlyForecast | null) => void;
 }
 
-function hourRelation(time: string): "now" | "future" | "past" {
-  if (isCurrentHour(time)) return "now";
-  const date = new Date(time);
-  if (Number.isNaN(date.getTime())) return "future";
-  return date.getTime() > Date.now() ? "future" : "past";
-}
-
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value);
 }
@@ -37,7 +31,7 @@ function defaultSelected(windowHours: HourlyForecast[]): string | null {
 }
 
 /**
- * Shared active hour for chart, strip, and scrubber.
+ * Shared active hour for chart, strip, and scrubber over the next 24 hours.
  * Future hours are labeled as forecast, never as current weather.
  */
 export function HourlyExploration({ hours, units, onExploreHour }: Props) {
@@ -45,33 +39,22 @@ export function HourlyExploration({ hours, units, onExploreHour }: Props) {
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
   const fallbackTime = defaultSelected(windowHours);
   const activeTime =
-    selectedTime &&
-    (windowHours.some((hour) => hour.time === selectedTime) ||
-      Boolean(hours?.some((hour) => hour.time === selectedTime)))
+    selectedTime && windowHours.some((hour) => hour.time === selectedTime)
       ? selectedTime
       : fallbackTime;
 
   const selected =
-    windowHours.find((hour) => hour.time === activeTime) ??
-    hours?.find((hour) => hour.time === activeTime) ??
-    null;
+    windowHours.find((hour) => hour.time === activeTime) ?? null;
   const exploringAway = Boolean(
     selected?.time && hourRelation(selected.time) !== "now"
   );
   const exploreHeading = selected?.time
-    ? hourRelation(selected.time) === "future"
-      ? `Forecast at ${formatHour24(selected.time)}`
-      : hourRelation(selected.time) === "past"
-        ? `At ${formatHour24(selected.time)}`
-        : null
+    ? formatSelectedHourLabel(selected.time)
     : null;
 
   function selectTime(time: string) {
     setSelectedTime(time);
-    const hour =
-      windowHours.find((row) => row.time === time) ??
-      hours?.find((row) => row.time === time) ??
-      null;
+    const hour = windowHours.find((row) => row.time === time) ?? null;
     onExploreHour?.(hour && hour.time && !isCurrentHour(hour.time) ? hour : null);
   }
 
@@ -95,7 +78,7 @@ export function HourlyExploration({ hours, units, onExploreHour }: Props) {
         </p>
       ) : null}
       <HourlyScroll
-        hours={hours}
+        hours={windowHours}
         units={units}
         selectedTime={activeTime}
         onSelectTime={selectTime}
@@ -106,8 +89,9 @@ export function HourlyExploration({ hours, units, onExploreHour }: Props) {
         onSelectTime={selectTime}
       />
       <HourlyChart
-        hours={hours}
+        hours={windowHours}
         units={units}
+        range="all"
         selectedTime={activeTime}
         onSelectTime={selectTime}
       />

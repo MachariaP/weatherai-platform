@@ -1,15 +1,16 @@
 /**
  * Presentation adapters for the hourly evolution chart.
  *
- * Window: from the current hour (or the first row if none matches), the next
- * 24 hourly records. The full `hourly[]` strip remains available in HourlyScroll.
+ * Shared window: from the current hour (or the first row if none matches),
+ * the next 24 hourly records. Chart, scrubber, and primary strip all use this
+ * same window. Fallback first-row starts are not labeled Now.
  *
  * Values are not converted or invented — null precipitation stays null.
  * Hourly public contract has no wind; that metric is not exposed.
  */
 
 import {
-  formatHour24,
+  formatHourlyClock,
   formatPrecipAmount,
   formatTemp,
   isCurrentHour,
@@ -62,7 +63,7 @@ export function toChartPoints(hours: HourlyForecast[]): HourlyChartPoint[] {
     const now = Boolean(time) && isCurrentHour(time);
     return {
       time,
-      label: now ? "Now" : time ? formatHour24(time) : "Unavailable",
+      label: now ? "Now" : time ? formatHourlyClock(time) : "Unavailable",
       temperature: isFiniteNumber(hour.temperature) ? hour.temperature : null,
       precipitation: isFiniteNumber(hour.precipitation) ? hour.precipitation : null,
       condition: hour.weather_description?.trim() || "Conditions unavailable",

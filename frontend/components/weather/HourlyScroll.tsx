@@ -4,7 +4,7 @@ import { useLayoutEffect, useRef, type KeyboardEvent } from "react";
 import type { HourlyForecast } from "@/lib/types";
 import { WeatherIcon, getWeatherIconName } from "@/lib/weather-icons";
 import {
-  formatHour24,
+  formatHourlyClock,
   formatPrecipAmount,
   formatTemp,
   isCurrentHour,
@@ -42,7 +42,7 @@ function handleScrollKeys(e: KeyboardEvent<HTMLDivElement>) {
 
 function hourLabel(time: string | undefined): string {
   if (!time?.trim()) return "Unavailable";
-  return isCurrentHour(time) ? "Now" : formatHour24(time);
+  return isCurrentHour(time) ? "Now" : formatHourlyClock(time);
 }
 
 function alignNowCard(list: HTMLElement, card: HTMLElement) {
@@ -52,7 +52,9 @@ function alignNowCard(list: HTMLElement, card: HTMLElement) {
 }
 
 /**
- * Horizontally scrollable hourly outlook from FastAPI `hourly`.
+ * Horizontally scrollable hourly outlook.
+ * Dashboard exploration passes the shared next-24 window; day drill-down
+ * still passes that day's hours. "Now" is only the actual current hour.
  * Precipitation is an amount (never a percent), shown only when finite.
  * On load and when `hours` is replaced (refresh), the current hour is
  * aligned to the start of the visible strip.

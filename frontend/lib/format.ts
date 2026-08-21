@@ -52,6 +52,22 @@ export function formatHour(timeStr: string): string {
 }
 
 /**
+ * Clock digits from a timezone-naive ISO-like timestamp (`…T09:45`).
+ * Does not run the value through Date / locale conversion.
+ */
+export function formatNaiveClock(iso: string | null | undefined): string | null {
+  if (!iso?.trim()) return null;
+  const match = iso.trim().match(/T(\d{2}:\d{2})/);
+  return match ? match[1] : null;
+}
+
+export function naiveDateKey(iso: string | null | undefined): string | null {
+  if (!iso?.trim()) return null;
+  const match = iso.trim().match(/^(\d{4}-\d{2}-\d{2})/);
+  return match ? match[1] : null;
+}
+
+/**
  * Clock digits from FastAPI `observed_at` (WeatherAI `current.time`).
  *
  * The backend passes the string through unchanged. Typical values look like
@@ -59,9 +75,58 @@ export function formatHour(timeStr: string): string {
  * and does not convert them into the browser locale or the selected location.
  */
 export function formatObservedClock(iso: string | null | undefined): string | null {
-  if (!iso?.trim()) return null;
-  const match = iso.trim().match(/T(\d{2}:\d{2})/);
-  return match ? match[1] : null;
+  return formatNaiveClock(iso);
+}
+
+/** Hourly clock label that preserves raw digits when the stamp is naive ISO. */
+export function formatHourlyClock(time: string): string {
+  return formatNaiveClock(time) ?? formatHour24(time);
+}
+
+export type HourRelation = "now" | "future" | "past";
+
+export function hourRelation(time: string): HourRelation {
+  if (isCurrentHour(time)) return "now";
+  const date = new Date(time);
+  if (Number.isNaN(date.getTime())) return "future";
+  return date.getTime() > Date.now() ? "future" : "past";
+}
+
+export function formatSelectedHourLabel(time: string): string {
+  const relation = hourRelation(time);
+  const clock = formatHourlyClock(time);
+  if (relation === "now") return "Now";
+  if (relation === "past") return `At ${clock}`;
+  return `Forecast at ${clock}`;
+}
+
+export function formatScrubberValueText(time: string): string {
+  const relation = hourRelation(time);
+  const clock = formatHourlyClock(time);
+  if (relation === "now") return `Current conditions at ${clock}`;
+  if (relation === "past") return `At ${clock}`;
+  return `Forecast at ${clock}`;
+}
+
+/**
+ * Right endpoint of the next-24 window.
+ * "Tomorrow" means a later calendar date than the window start in the naive
+ * timestamps — not a timezone conversion and not the browser's local tomorrow.
+ */
+export function formatWindowEndLabel(
+  startTime: string | undefined | null,
+  endTime: string | undefined | null,
+  compact = false
+): string {
+  if (!endTime?.trim()) return "";
+  if (isCurrentHour(endTime)) return "Now";
+  const clock = formatHourlyClock(endTime);
+  const startDay = naiveDateKey(startTime);
+  const endDay = naiveDateKey(endTime);
+  if (startDay && endDay && endDay > startDay) {
+    return compact ? `${clock} +1d` : `Tomorrow ${clock}`;
+  }
+  return clock;
 }
 
 export function formatTime(iso: string | null): string | null {
