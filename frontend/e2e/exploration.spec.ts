@@ -184,14 +184,20 @@ test.describe("advanced weather exploration", () => {
 
     await expect(page.getByText("Observed 09:45")).toBeVisible();
     await expect(page.getByRole("heading", { name: "Next 24 hours" })).toBeVisible();
-    await expect(page.getByText("Tomorrow 08:00")).toBeVisible();
+    await expect(page.getByText("Tomorrow 08:00", { exact: true })).toBeVisible();
     await expect(page.getByRole("region", { name: "Current weather" })).toContainText("18°");
     await expect(page.getByRole("region", { name: "Hourly forecast" })).toContainText("17°");
+    await expect(page.getByTestId("hourly-scroll-fade-right")).toBeVisible();
 
+    const nowX = await page.getByTestId("chart-now-marker").getAttribute("x1");
     const slider = page.getByRole("slider", { name: "Hourly weather timeline" });
     await slider.fill("5");
     await expect(page.getByRole("status").filter({ hasText: /Forecast at 14:00/ })).toBeVisible();
     await expect(page.getByText("Observed 09:45")).toBeVisible();
+    await expect(page.getByTestId("chart-now-marker")).toHaveAttribute("x1", nowX ?? "");
+    await expect(page.getByTestId("chart-selected-marker")).toHaveCount(1);
+    const selectedX = await page.getByTestId("chart-selected-marker").getAttribute("x1");
+    expect(selectedX).not.toBe(nowX);
 
     const strip = page.getByRole("list", { name: "Hourly forecast times" });
     await expect(strip.getByRole("button").nth(5)).toHaveAttribute("aria-pressed", "true");
