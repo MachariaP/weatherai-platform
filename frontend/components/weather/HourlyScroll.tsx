@@ -14,6 +14,8 @@ import {
 interface Props {
   hours: HourlyForecast[] | null | undefined;
   units: Units;
+  selectedTime?: string | null;
+  onSelectTime?: (time: string) => void;
 }
 
 function isFiniteNumber(value: unknown): value is number {
@@ -55,10 +57,12 @@ function alignNowCard(list: HTMLElement, card: HTMLElement) {
  * On load and when `hours` is replaced (refresh), the current hour is
  * aligned to the start of the visible strip.
  */
-export function HourlyScroll({ hours, units }: Props) {
+export function HourlyScroll({ hours, units, selectedTime = null, onSelectTime }: Props) {
   const rows = Array.isArray(hours) ? hours : [];
   const listRef = useRef<HTMLDivElement>(null);
   const nowRef = useRef<HTMLElement>(null);
+  const selectedRef = useRef<HTMLElement>(null);
+  const skipSelectScroll = useRef(true);
   const nowIndex = rows.findIndex(
     (hour) => Boolean(hour.time?.trim()) && isCurrentHour(hour.time)
   );
@@ -68,7 +72,21 @@ export function HourlyScroll({ hours, units }: Props) {
     const card = nowRef.current;
     if (!list || !card) return;
     alignNowCard(list, card);
+    skipSelectScroll.current = true;
   }, [hours]);
+
+  useLayoutEffect(() => {
+    if (skipSelectScroll.current) {
+      skipSelectScroll.current = false;
+      return;
+    }
+    const card = selectedRef.current;
+    const list = listRef.current;
+    if (!card || !list || !selectedTime) return;
+    const delta =
+      card.getBoundingClientRect().left - list.getBoundingClientRect().left;
+    list.scrollLeft += delta - 8;
+  }, [selectedTime]);
 
   return (
     <section aria-label="Hourly forecast" className="min-w-0 max-w-full">
@@ -90,6 +108,8 @@ export function HourlyScroll({ hours, units }: Props) {
         >
           {rows.map((hour, index) => {
             const now = index === nowIndex;
+            const timeKey = hour.time?.trim() ?? "";
+            const selected = Boolean(timeKey) && timeKey === selectedTime;
             const description =
               hour.weather_description?.trim() || "Conditions unavailable";
             const temperature = isFiniteNumber(hour.temperature)
@@ -98,21 +118,18 @@ export function HourlyScroll({ hours, units }: Props) {
             const timeLabel = hourLabel(hour.time);
             const precip = formatPrecipAmount(hour.precipitation, units);
             const precipLabel = precip ? `, ${precip}` : "";
-
-            return (
-              <article
-                ref={now ? nowRef : undefined}
-                role="listitem"
-                key={hour.time?.trim() ? hour.time : `hour-${index}`}
-                aria-current={now ? "true" : undefined}
-                aria-label={`${timeLabel}: ${description}, ${temperature}${precipLabel}`}
-                className={`flex w-20 shrink-0 flex-col items-center rounded-card border px-2 py-3 text-center ${
-                  now ? "border-accent/40 bg-surface" : "border-border bg-surface"
-                }`}
-              >
+            const cardClass = `flex w-20 shrink-0 flex-col items-center rounded-card border px-2 py-3 text-center motion-safe:transition-colors ${
+              selected
+                ? "border-accent/50 bg-accent/10"
+                : now
+                  ? "border-accent/40 bg-surface"
+                  : "border-border bg-surface"
+            }`;
+            const body = (
+              <>
                 <p
                   className={`text-[11px] font-semibold tracking-wide ${
-                    now ? "text-accent" : "text-text-muted"
+                    selected || now ? "text-accent" : "text-text-muted"
                   }`}
                 >
                   {timeLabel}
@@ -123,14 +140,14 @@ export function HourlyScroll({ hours, units }: Props) {
                       isFiniteNumber(hour.weather_code) ? hour.weather_code : -1
                     )}
                     className={`h-6 w-6 ${
-                      now ? "text-accent" : "text-text-secondary"
+                      selected || now ? "text-accent" : "text-text-secondary"
                     }`}
                   />
                 </div>
                 <p className="sr-only">{description}</p>
                 <p
                   className={`text-sm font-semibold tabular-nums ${
-                    now ? "text-accent" : "text-text"
+                    selected || now ? "text-accent" : "text-text"
                   }`}
                 >
                   {temperature}
@@ -138,6 +155,34 @@ export function HourlyScroll({ hours, units }: Props) {
                 <p className="mt-1 min-h-[1rem] text-[11px] tabular-nums text-text-muted">
                   {precip ?? ""}
                 </p>
+              </>
+            );
+
+            return (
+              <article
+                ref={(node) => {
+                  if (now) nowRef.current = node;
+                  if (selected) selectedRef.current = node;
+                }}
+                role="listitem"
+                key={timeKey || `hour-${index}`}
+                aria-current={now ? "true" : undefined}
+                aria-label={onSelectTime ? undefined : `${timeLabel}: ${description}, ${temperature}${precipLabel}`}
+                className={onSelectTime ? undefined : cardClass}
+              >
+                {onSelectTime && timeKey ? (
+                  <button
+                    type="button"
+                    aria-pressed={selected}
+                    aria-label={`${timeLabel}: ${description}, ${temperature}${precipLabel}`}
+                    onClick={() => onSelectTime(timeKey)}
+                    className={`focus-ring ${cardClass}`}
+                  >
+                    {body}
+                  </button>
+                ) : (
+                  body
+                )}
               </article>
             );
           })}

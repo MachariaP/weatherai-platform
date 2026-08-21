@@ -18,6 +18,8 @@ interface Props {
   units: Units;
   /** Dashboard default: next 24 hours from now. Drill-down: all provided hours. */
   range?: "next24" | "all";
+  selectedTime?: string | null;
+  onSelectTime?: (time: string) => void;
 }
 
 const VIEW_W = 640;
@@ -63,7 +65,13 @@ function nearestIndex(clientX: number, svg: SVGSVGElement, count: number): numbe
  * Precipitation is offered only when at least one finite amount exists.
  * Hourly wind is not on the public contract, so it is not a tab.
  */
-export function HourlyChart({ hours, units, range = "next24" }: Props) {
+export function HourlyChart({
+  hours,
+  units,
+  range = "next24",
+  selectedTime = null,
+  onSelectTime,
+}: Props) {
   const windowHours = useMemo(() => {
     if (range === "all") {
       return Array.isArray(hours)
@@ -75,7 +83,7 @@ export function HourlyChart({ hours, units, range = "next24" }: Props) {
   const points = useMemo(() => toChartPoints(windowHours), [windowHours]);
   const precipOk = precipitationAvailable(windowHours);
   const [metric, setMetric] = useState<HourlyChartMetric>("temperature");
-  const [active, setActive] = useState<number | null>(null);
+  const [hover, setHover] = useState<number | null>(null);
 
   const shownMetric: HourlyChartMetric =
     metric === "precipitation" && !precipOk ? "temperature" : metric;
@@ -97,33 +105,46 @@ export function HourlyChart({ hours, units, range = "next24" }: Props) {
     .filter((row): row is { index: number; x: number; y: number; value: number } => row !== null);
 
   const linePath = plotted.map((row, i) => `${i === 0 ? "M" : "L"} ${row.x} ${row.y}`).join(" ");
+  const selectedIndex = selectedTime
+    ? points.findIndex((point) => point.time === selectedTime)
+    : -1;
   const nowPoint = points.findIndex((point) => point.isNow);
   const summary = chartSummary(points, shownMetric, units);
-  const activePoint = active !== null ? points[active] : null;
-  const tip = activePoint ? tooltipFields(activePoint, units) : [];
-  const activePlotted = plotted.find((row) => row.index === active);
+  const hoverPoint = hover !== null ? points[hover] : null;
+  const tip = hoverPoint ? tooltipFields(hoverPoint, units) : [];
+  const hoverPlotted = plotted.find((row) => row.index === hover);
+  const emphasis = hover ?? (selectedIndex >= 0 ? selectedIndex : null);
+
+  function selectIndex(index: number) {
+    const point = points[index];
+    if (!point?.time) return;
+    setHover(index);
+    onSelectTime?.(point.time);
+  }
 
   function onPointer(event: PointerEvent<SVGSVGElement>) {
     if (points.length === 0) return;
-    setActive(nearestIndex(event.clientX, event.currentTarget, points.length));
+    const index = nearestIndex(event.clientX, event.currentTarget, points.length);
+    setHover(index);
+    if (event.type === "pointerdown") selectIndex(index);
   }
 
   function onChartKey(event: KeyboardEvent<SVGSVGElement>) {
     if (points.length === 0) return;
     if (event.key === "ArrowRight") {
       event.preventDefault();
-      setActive((index) => Math.min(points.length - 1, (index ?? -1) + 1));
+      selectIndex(Math.min(points.length - 1, (emphasis ?? -1) + 1));
     } else if (event.key === "ArrowLeft") {
       event.preventDefault();
-      setActive((index) => Math.max(0, (index ?? points.length) - 1));
+      selectIndex(Math.max(0, (emphasis ?? points.length) - 1));
     } else if (event.key === "Home") {
       event.preventDefault();
-      setActive(0);
+      selectIndex(0);
     } else if (event.key === "End") {
       event.preventDefault();
-      setActive(points.length - 1);
+      selectIndex(points.length - 1);
     } else if (event.key === "Escape") {
-      setActive(null);
+      setHover(null);
     }
   }
 
@@ -187,7 +208,7 @@ export function HourlyChart({ hours, units, range = "next24" }: Props) {
             aria-label={summary}
             onPointerMove={onPointer}
             onPointerDown={onPointer}
-            onPointerLeave={() => setActive(null)}
+            onPointerLeave={() => setHover(null)}
             onKeyDown={onChartKey}
             className="focus-ring h-40 w-full max-w-full touch-pan-y text-accent sm:h-44"
           >
@@ -262,7 +283,7 @@ export function HourlyChart({ hours, units, range = "next24" }: Props) {
                 key={points[row.index].time || row.index}
                 cx={row.x}
                 cy={row.y}
-                r={active === row.index ? 4.5 : 3}
+                r={emphasis === row.index ? 4.5 : 2}
                 fill="currentColor"
                 className="motion-safe:transition-[r]"
               />
@@ -293,13 +314,13 @@ export function HourlyChart({ hours, units, range = "next24" }: Props) {
                   </text>
                 ))}
           </svg>
-          {activePoint && activePlotted ? (
+          {hoverPoint && hoverPlotted ? (
             <div
               role="status"
               className="pointer-events-none absolute z-10 max-w-[12rem] rounded-control border border-border bg-background px-2.5 py-2 text-xs text-text shadow-none"
               style={{
-                left: `clamp(0.5rem, ${(activePlotted.x / VIEW_W) * 100}% - 4.5rem, calc(100% - 12.5rem))`,
-                top: `clamp(0.25rem, ${(activePlotted.y / VIEW_H) * 100}% - 4.5rem, calc(100% - 7rem))`,
+                left: `clamp(0.5rem, ${(hoverPlotted.x / VIEW_W) * 100}% - 4.5rem, calc(100% - 12.5rem))`,
+                top: `clamp(0.25rem, ${(hoverPlotted.y / VIEW_H) * 100}% - 4.5rem, calc(100% - 7rem))`,
               }}
             >
               {tip.map((field) => (

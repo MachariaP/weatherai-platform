@@ -143,12 +143,18 @@ export function CurrentWeather({
           </div>
 
           <div className="relative z-10 flex flex-wrap items-end gap-3">
-            <p className="text-[72px] font-bold leading-[80px] tracking-[-0.02em] tabular-nums text-text">
+            <p
+              key={temperature}
+              className="wx-in text-[72px] font-bold leading-[80px] tracking-[-0.02em] tabular-nums text-text motion-reduce:animate-none"
+            >
               {hasTemp ? `${temperature}°` : temperature}
             </p>
             <div className="mb-2 min-w-0">
-              <p className="flex items-center gap-1 text-xl font-semibold capitalize text-accent">
-                <WeatherIcon name={iconName} className="h-6 w-6" />
+              <p
+                key={description}
+                className="wx-in flex items-center gap-1 text-xl font-semibold capitalize text-accent motion-reduce:animate-none"
+              >
+                <WeatherIcon name={iconName} animated className="h-6 w-6" />
                 {description}
               </p>
               {feelsLike ? (

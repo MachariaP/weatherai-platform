@@ -36,6 +36,7 @@ export function getWeatherIconName(code: number, isDay: boolean = true): Weather
 interface IconProps {
   name: WeatherIconName;
   className?: string;
+  animated?: boolean;
 }
 
 const STROKE = {
@@ -52,18 +53,18 @@ const CLOUD =
 const SUN_RAYS =
   "M8 2.5v1.6M8 11.9v1.6M2.5 8h1.6M11.9 8h1.6M4.1 4.1l1.1 1.1M10.8 10.8l1.1 1.1M11.9 4.1l-1.1 1.1M5.2 10.8l-1.1 1.1";
 
-export function WeatherIcon({ name, className }: IconProps) {
+export function WeatherIcon({ name, className, animated = false }: IconProps) {
   return (
     <svg
       viewBox="0 0 24 24"
-      className={className}
+      className={`${animated ? "wx-animated " : ""}${className ?? ""}`}
       aria-hidden="true"
       {...STROKE}
     >
       {name === "clear-day" && (
         <>
           <circle cx="8" cy="8" r="3.4" />
-          <path d={SUN_RAYS} />
+          <path className="wx-rays" d={SUN_RAYS} />
         </>
       )}
 
@@ -74,7 +75,7 @@ export function WeatherIcon({ name, className }: IconProps) {
       {name === "partly-day" && (
         <>
           <circle cx="8.5" cy="7.5" r="2.8" />
-          <path d={SUN_RAYS} transform="translate(0.5 -0.5)" />
+          <path className="wx-rays" d={SUN_RAYS} transform="translate(0.5 -0.5)" />
           <path d={CLOUD} transform="translate(1 -1.5)" />
         </>
       )}
@@ -89,28 +90,28 @@ export function WeatherIcon({ name, className }: IconProps) {
       {name === "cloudy" && (
         <>
           <path d={CLOUD} transform="translate(-5 -5.5) scale(0.62)" opacity="0.55" />
-          <path d={CLOUD} />
+          <path className="wx-haze" d={CLOUD} />
         </>
       )}
 
       {name === "fog" && (
         <>
           <path d={CLOUD} transform="translate(0 -2.5) scale(0.9)" />
-          <path d="M4 16.5h16M4 19.5h10.5" />
+          <path className="wx-haze" d="M4 16.5h16M4 19.5h10.5" />
         </>
       )}
 
       {name === "rain" && (
         <>
           <path d={CLOUD} transform="translate(0 -2.5) scale(0.9)" />
-          <path d="M8.25 16.75 6.75 20M12.25 16.75 10.75 20M16.25 16.75 14.75 20" />
+          <path className="wx-drop" d="M8.25 16.75 6.75 20M12.25 16.75 10.75 20M16.25 16.75 14.75 20" />
         </>
       )}
 
       {name === "snow" && (
         <>
           <path d={CLOUD} transform="translate(0 -2.5) scale(0.9)" />
-          <path d="M8.5 17.25v3M7 18.75h3M12.5 17.25v3M11 18.75h3M16.5 17.25v3M15 18.75h3" />
+          <path className="wx-flake" d="M8.5 17.25v3M7 18.75h3M12.5 17.25v3M11 18.75h3M16.5 17.25v3M15 18.75h3" />
         </>
       )}
 
@@ -118,6 +119,7 @@ export function WeatherIcon({ name, className }: IconProps) {
         <>
           <path d={CLOUD} transform="translate(0 -2.5) scale(0.9)" />
           <path
+            className="wx-bolt"
             d="M13.25 12.75 9.5 17.5h3l-1.75 3.5L15.25 15.5h-3.1l1.1-2.75Z"
             fill="currentColor"
             stroke="none"

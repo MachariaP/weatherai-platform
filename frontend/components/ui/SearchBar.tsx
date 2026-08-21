@@ -301,7 +301,7 @@ export function SearchBar() {
           {panelOpen ? (
             <div
               id={listId}
-              className="absolute z-30 mt-1 max-h-80 w-full overflow-auto rounded-control border border-border bg-surface py-1 motion-safe:transition-opacity"
+              className="absolute z-30 mt-1 max-h-80 w-full overflow-auto rounded-control border border-border bg-surface py-1 max-md:fixed max-md:inset-x-3 max-md:bottom-24 max-md:mt-0 max-md:max-h-[min(70vh,24rem)]"
             >
               {showPanel ? (
                 <>

@@ -39,6 +39,12 @@
 
   --shadow-card: none;
   --shadow-float: none;
+
+  --motion-instant: 120ms;
+  --motion-interaction: 180ms;
+  --motion-content: 240ms;
+  --motion-panel: 300ms;
+  --motion-atmosphere: 18s;
 }
 
 /* ---------------------------------------------------------------------------
@@ -126,7 +132,212 @@ input[type="number"] {
     scroll-behavior: auto;
   }
   .animate-pulse,
-  .animate-spin {
+  .animate-spin,
+  .weather-atmosphere,
+  .weather-atmosphere::before,
+  .weather-atmosphere::after,
+  .wx-animated .wx-rays,
+  .wx-animated .wx-drop,
+  .wx-animated .wx-flake,
+  .wx-animated .wx-haze,
+  .wx-animated .wx-bolt {
     animation: none !important;
   }
+}
+
+@keyframes wx-in {
+  from {
+    opacity: 0.4;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes wx-rays {
+  0%,
+  100% {
+    opacity: 0.7;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes wx-drip {
+  0% {
+    transform: translateY(0);
+    opacity: 0.25;
+  }
+  70% {
+    opacity: 0.9;
+  }
+  100% {
+    transform: translateY(3px);
+    opacity: 0.2;
+  }
+}
+
+@keyframes wx-haze {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
+@keyframes wx-bolt {
+  0%,
+  92%,
+  100% {
+    opacity: 0.55;
+  }
+  94% {
+    opacity: 1;
+  }
+}
+
+@keyframes atm-drift {
+  to {
+    transform: translate3d(-6%, 0, 0);
+  }
+}
+
+@keyframes atm-fall {
+  to {
+    transform: translate3d(0, 14%, 0);
+  }
+}
+
+.wx-animated .wx-rays {
+  animation: wx-rays 8s ease-in-out infinite;
+}
+.wx-animated .wx-drop {
+  animation: wx-drip 2.2s ease-in infinite;
+}
+.wx-animated .wx-flake {
+  animation: wx-drip 3.4s ease-in-out infinite;
+}
+.wx-animated .wx-haze {
+  animation: wx-haze 7s ease-in-out infinite;
+}
+.wx-animated .wx-bolt {
+  animation: wx-bolt 9s ease-in-out infinite;
+}
+
+.wx-in {
+  animation: wx-in var(--motion-content) ease-out;
+}
+
+.weather-atmosphere {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+  background: transparent;
+  transition: background-color var(--motion-content) ease;
+}
+
+.weather-atmosphere::before,
+.weather-atmosphere::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.weather-atmosphere[data-atm="CLEAR"][data-day="day"] {
+  background: radial-gradient(
+    ellipse 90% 42% at 50% -8%,
+    rgb(255 196 140 / 0.09),
+    transparent 68%
+  );
+}
+
+.weather-atmosphere[data-atm="CLEAR"][data-day="night"] {
+  background: rgb(6 12 22 / 0.45);
+}
+
+.weather-atmosphere[data-atm="CLEAR"][data-day="night"]::after {
+  inset: 12% 10% auto auto;
+  width: 2px;
+  height: 2px;
+  border-radius: 9999px;
+  background: rgb(221 228 225 / 0.55);
+  box-shadow:
+    18vw 8vh 0 0 rgb(221 228 225 / 0.18),
+    42vw 18vh 0 0 rgb(221 228 225 / 0.12),
+    68vw 6vh 0 0 rgb(221 228 225 / 0.16),
+    12vw 28vh 0 0 rgb(221 228 225 / 0.1),
+    78vw 22vh 0 0 rgb(221 228 225 / 0.14),
+    54vw 34vh 0 0 rgb(221 228 225 / 0.08);
+}
+
+.weather-atmosphere[data-atm="PARTLY_CLOUDY"] {
+  background: radial-gradient(
+    ellipse 70% 36% at 18% 0%,
+    rgb(186 202 197 / 0.07),
+    transparent 70%
+  );
+}
+
+.weather-atmosphere[data-atm="CLOUDY"]::before,
+.weather-atmosphere[data-atm="FOG"]::before {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgb(186 202 197 / 0.06) 40%,
+    transparent 80%
+  );
+  animation: atm-drift var(--motion-atmosphere) linear infinite;
+}
+
+.weather-atmosphere[data-atm="FOG"]::before {
+  opacity: 0.85;
+}
+
+.weather-atmosphere[data-atm="RAIN"]::after,
+.weather-atmosphere[data-atm="HEAVY_RAIN"]::after {
+  inset: -18% 0;
+  background: repeating-linear-gradient(
+    188deg,
+    transparent 0 14px,
+    rgb(221 228 225 / 0.1) 14px 15px
+  );
+  animation: atm-fall var(--motion-atmosphere) linear infinite;
+  opacity: 0.4;
+}
+
+.weather-atmosphere[data-atm="HEAVY_RAIN"] {
+  background: rgb(6 12 18 / 0.28);
+}
+
+.weather-atmosphere[data-atm="HEAVY_RAIN"]::after {
+  background: repeating-linear-gradient(
+    188deg,
+    transparent 0 10px,
+    rgb(221 228 225 / 0.14) 10px 11px
+  );
+  animation-duration: 10s;
+  opacity: 0.5;
+}
+
+.weather-atmosphere[data-atm="SNOW"]::after {
+  inset: -12% 0;
+  background-image: radial-gradient(circle, rgb(221 228 225 / 0.35) 1px, transparent 1.4px);
+  background-size: 42px 56px;
+  animation: atm-fall 28s linear infinite;
+  opacity: 0.35;
+}
+
+.weather-atmosphere[data-atm="STORM"] {
+  background: rgb(4 8 14 / 0.38);
+}
+
+.weather-atmosphere[data-atm="STORM"]::after {
+  background: rgb(87 241 219 / 0.03);
+  animation: wx-bolt 11s ease-in-out infinite;
 }

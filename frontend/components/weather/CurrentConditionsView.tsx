@@ -11,12 +11,14 @@ import { WeatherLoading } from "@/components/ui/LoadingSkeleton";
 import { CurrentWeather } from "./CurrentWeather";
 import { ObservedRefresh } from "./ObservedRefresh";
 import { AISummary } from "./AISummary";
-import { HourlyScroll } from "./HourlyScroll";
-import { HourlyChart } from "./HourlyChart";
+import { HourlyExploration } from "./HourlyExploration";
 import { ForecastGrid } from "./ForecastGrid";
 import { SettingsPanel } from "./SettingsPanel";
 import { CompareView } from "./CompareView";
 import { FavoriteToggle } from "@/components/ui/FavoriteToggle";
+import { WeatherAtmosphere } from "./WeatherAtmosphere";
+import { useCallback, useState } from "react";
+import type { HourlyForecast } from "@/lib/types";
 
 /**
  * Async weather states: empty, loading, success, error, and view switching.
@@ -32,6 +34,16 @@ export function CurrentConditionsView() {
     aiEnabled,
     forecastDays
   );
+  const [exploreHour, setExploreHour] = useState<HourlyForecast | null>(null);
+  const locKey = `${location?.lat ?? ""},${location?.lon ?? ""}`;
+  const [exploreLoc, setExploreLoc] = useState(locKey);
+  if (exploreLoc !== locKey) {
+    setExploreLoc(locKey);
+    setExploreHour(null);
+  }
+  const onExploreHour = useCallback((hour: HourlyForecast | null) => {
+    setExploreHour(hour);
+  }, []);
 
   if (view === "settings") {
     return <SettingsPanel />;
@@ -132,14 +144,22 @@ export function CurrentConditionsView() {
 
   return (
     <div className="space-y-6 pt-2 sm:space-y-8">
+      <WeatherAtmosphere
+        code={exploreHour?.weather_code ?? data.current.weather_code}
+        isDay={data.current.is_day === true}
+      />
+      <div className="relative z-10 space-y-6 sm:space-y-8">
       {error ? <ErrorBanner error={error} onRetry={refetch} /> : null}
       {refreshBar}
 
       <div className="grid min-w-0 grid-cols-1 items-start gap-4 lg:grid-cols-12">
         <div className="flex min-w-0 flex-col gap-8 lg:col-span-8">
           {hero}
-          <HourlyScroll hours={data.hourly} units={units} />
-          <HourlyChart hours={data.hourly} units={units} />
+          <HourlyExploration
+            hours={data.hourly}
+            units={units}
+            onExploreHour={onExploreHour}
+          />
         </div>
 
         <aside className="flex min-w-0 flex-col gap-8 border-t border-border pt-8 lg:col-span-4 lg:border-l lg:border-t-0 lg:pl-8 lg:pt-0">
@@ -155,6 +175,7 @@ export function CurrentConditionsView() {
             hourly={data.hourly}
           />
         </aside>
+      </div>
       </div>
     </div>
   );

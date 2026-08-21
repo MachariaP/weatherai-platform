@@ -40,7 +40,7 @@ export default function RootLayout({
               <main
                 id="main"
                 tabIndex={-1}
-                className="mx-auto w-full min-w-0 max-w-7xl flex-1 px-4 pb-24 pt-8 sm:px-6 lg:pb-10 focus:outline-none"
+                className="mx-auto w-full min-w-0 max-w-7xl flex-1 px-4 pb-24 pt-8 sm:px-6 lg:pb-10 focus:outline-none relative z-10"
               >
                 {children}
               </main>
