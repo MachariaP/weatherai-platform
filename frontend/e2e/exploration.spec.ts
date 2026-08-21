@@ -9,6 +9,23 @@ const MOMBASA = {
   label: "Mombasa, Kenya",
 };
 
+function pad(n: number) {
+  return String(n).padStart(2, "0");
+}
+
+function hourlySeries(startUtc: Date, count: number) {
+  return Array.from({ length: count }, (_, i) => {
+    const at = new Date(startUtc.getTime() + i * 60 * 60 * 1000);
+    return {
+      time: `${at.getUTCFullYear()}-${pad(at.getUTCMonth() + 1)}-${pad(at.getUTCDate())}T${pad(at.getUTCHours())}:00`,
+      temperature: 17 + (i % 4),
+      precipitation: i === 1 ? 1.1 : 0,
+      weather_code: i === 1 ? 61 : 3,
+      weather_description: i === 1 ? "Slight rain" : "Overcast",
+    };
+  });
+}
+
 const NAIROBI_EXPLORATION = weatherPayload({
   lat: NAIROBI_KE.lat,
   lon: NAIROBI_KE.lon,
@@ -66,6 +83,24 @@ const NAIROBI_EXPLORATION = weatherPayload({
   ],
 });
 
+const NAIROBI_NEXT24 = weatherPayload({
+  lat: NAIROBI_KE.lat,
+  lon: NAIROBI_KE.lon,
+  place_name: NAIROBI_KE.label,
+  temperature: 18,
+  description: "Overcast",
+  current: {
+    temperature: 18,
+    wind_speed: 4,
+    wind_direction: 111,
+    weather_code: 3,
+    weather_description: "Overcast",
+    is_day: true,
+    observed_at: "2026-08-21T09:45",
+  },
+  hourly: hourlySeries(new Date("2026-08-21T09:00:00Z"), 24),
+});
+
 const MOMBASA_WEATHER = weatherPayload({
   lat: MOMBASA.lat,
   lon: MOMBASA.lon,
@@ -74,8 +109,13 @@ const MOMBASA_WEATHER = weatherPayload({
   description: "Clear",
 });
 
+async function freezeUtc(page: Parameters<typeof openHome>[0], iso: string) {
+  await page.clock.setFixedTime(new Date(iso));
+}
+
 test.describe("advanced weather exploration", () => {
   test("hourly chart, forecast drill-down, and location switcher", async ({ page }) => {
+    await freezeUtc(page, "2026-08-20T15:30:00Z");
     const api = await installApiMock(page);
     api.geocodeJson(GEOCODE_NAIROBI);
     api.weatherJson(NAIROBI_EXPLORATION);
@@ -112,6 +152,7 @@ test.describe("advanced weather exploration", () => {
   });
 
   test("timeline scrubber stays in sync with the hourly strip", async ({ page }) => {
+    await freezeUtc(page, "2026-08-20T15:30:00Z");
     const api = await installApiMock(page);
     api.geocodeJson(GEOCODE_NAIROBI);
     api.weatherJson(NAIROBI_EXPLORATION);
@@ -125,12 +166,60 @@ test.describe("advanced weather exploration", () => {
     await expect(slider).toBeVisible();
     const strip = page.getByRole("list", { name: "Hourly forecast times" });
     await strip.getByRole("button").nth(1).click();
-    await expect(page.getByRole("status").filter({ hasText: /Forecast at/ })).toBeVisible();
+    await expect(page.getByRole("status").filter({ hasText: /Forecast at 16:00/ })).toBeVisible();
     await expect(strip.getByRole("button").nth(1)).toHaveAttribute("aria-pressed", "true");
+    await expect(slider).toHaveAttribute("aria-valuenow", "1");
+  });
+
+  test("observed time, next 24 hours heading, and tomorrow end cap", async ({ page }) => {
+    await freezeUtc(page, "2026-08-21T09:30:00Z");
+    const api = await installApiMock(page);
+    api.geocodeJson(GEOCODE_NAIROBI);
+    api.weatherJson(NAIROBI_NEXT24);
+    await openHome(page);
+    await typePlace(page, "Nairobi");
+    await waitForSuggestion(page, /Nairobi, Kenya/);
+    await page.getByRole("option", { name: /Nairobi, Kenya/ }).click();
+    await expectDashboard(page);
+
+    await expect(page.getByText("Observed 09:45")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Next 24 hours" })).toBeVisible();
+    await expect(page.getByText("Tomorrow 08:00")).toBeVisible();
+    await expect(page.getByRole("region", { name: "Current weather" })).toContainText("18°");
+    await expect(page.getByRole("region", { name: "Hourly forecast" })).toContainText("17°");
+
+    const slider = page.getByRole("slider", { name: "Hourly weather timeline" });
+    await slider.fill("5");
+    await expect(page.getByRole("status").filter({ hasText: /Forecast at 14:00/ })).toBeVisible();
+    await expect(page.getByText("Observed 09:45")).toBeVisible();
+
+    const strip = page.getByRole("list", { name: "Hourly forecast times" });
+    await expect(strip.getByRole("button").nth(5)).toHaveAttribute("aria-pressed", "true");
+  });
+
+  test("mobile next-24 timeline stays on canvas", async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 812 });
+    await freezeUtc(page, "2026-08-21T09:30:00Z");
+    const api = await installApiMock(page);
+    api.geocodeJson(GEOCODE_NAIROBI);
+    api.weatherJson(NAIROBI_NEXT24);
+    await openHome(page);
+    await typePlace(page, "Nairobi");
+    await waitForSuggestion(page, /Nairobi, Kenya/);
+    await page.getByRole("option", { name: /Nairobi, Kenya/ }).click();
+    await expectDashboard(page);
+
+    await expect(page.getByRole("heading", { name: "Next 24 hours" })).toBeVisible();
+    await expect(page.getByText("08:00 +1d")).toBeVisible();
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - window.innerWidth
+    );
+    expect(overflow).toBeLessThanOrEqual(2);
   });
 
   test("reduced-motion still loads the dashboard", async ({ page }) => {
     await page.emulateMedia({ reducedMotion: "reduce" });
+    await freezeUtc(page, "2026-08-20T15:30:00Z");
     const api = await installApiMock(page);
     api.geocodeJson(GEOCODE_NAIROBI);
     api.weatherJson(NAIROBI_EXPLORATION);
