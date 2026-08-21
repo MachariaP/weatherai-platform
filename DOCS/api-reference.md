@@ -79,7 +79,9 @@ probabilities. Do not treat them as a chance of rain.
 `current.observed_at` is passed through from WeatherAI `current.time`. Typical
 values are timezone-naive ISO-like strings (`2026-08-19T12:00`). The UI prints
 those clock digits (`Observed 12:00`) and does not convert them to the selected
-location's timezone.
+location's timezone. Hourly **Now** is the `hourly[].time` bucket whose naive
+date and hour match `observed_at` (not the browser clock). Provider timezone
+semantics remain unspecified by the contract.
 
 Optional current extras (`feels_like`, `humidity`, `uv_index`, `pressure`,
 `precip_last_24h`) and `place_name` are nullable. The UI hides tiles when they

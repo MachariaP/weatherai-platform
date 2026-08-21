@@ -94,12 +94,16 @@ selection, and Now vs forecast scrubber semantics, plus Playwright journeys
 for strip/scrubber sync and a reduced-motion smoke.
 
 Time semantics add Vitest for `observed_at` clock digits, missing observation
-time, current vs hourly-Now temperatures, the shared next-24 window (including
-fallback without a Now label), and cross-day `Tomorrow` / `+1d` caps.
+time, current vs hourly-Now temperatures, provider-observation hour matching
+(`naiveHourKey` / `isObservedHour`), the shared next-24 window (including
+fallback without a Now label), past/future relative to `observed_at`, and
+cross-day `Tomorrow` / `+1d` caps. Browser timezone must not change which
+hourly row is Now.
 Playwright covers Observed HH:MM, the Next 24 hours heading, a tomorrow end
 cap, scrubbing a future hour without changing Observed, strip/chart sync with
-a stationary Now marker, hourly strip edge fades, and no mobile overflow.
-Fixtures stay mocked `/api/*`.
+a stationary Now marker, hourly strip edge fades, no mobile overflow, and
+provider-relative Now under `America/New_York` and `Asia/Tokyo` with fixed
+mocked payloads. Fixtures stay mocked `/api/*`.
 
 Lower-level storage, limit, and preference fallback details stay in Vitest.
 

@@ -134,14 +134,14 @@ Daily and hourly forecast rows show precipitation **amount** (mm or in from
 the contract) when the value is finite, including verified `0`. Null amounts
 are omitted. The field is never shown as a percent.
 
-`Observed HH:MM` uses clock digits from `current.observed_at` when present.
-It is observation metadata for the current-condition snapshot, not the
-selected forecast hour. Cache freshness (`Cached` / `Live`) sits beside
-Observed with Refresh. Missing `observed_at` omits the visible label
-(screen readers still hear that observation time is unavailable). Refresh
-reissues `/api/weather` and may return `X-Cache: HIT`. Existing weather
-stays on screen during a manual refresh; a location change still clears
-stale weather immediately.
+`Observed HH:MM` uses clock digits from `current.observed_at` when present
+(regex on the naive `T(HH:MM)` digits — not `Date`). It is observation
+metadata for the current-condition snapshot, not the selected forecast hour.
+Cache freshness (`Cached` / `Live`) sits beside Observed with Refresh.
+Missing `observed_at` omits the visible label (screen readers still hear that
+observation time is unavailable). Refresh reissues `/api/weather` and may
+return `X-Cache: HIT`. Existing weather stays on screen during a manual
+refresh; a location change still clears stale weather immediately.
 
 Hero heading: `place_name` when reverse geocode succeeded, else the
 location label. Subtitle is always `lat, lon` at 4 decimals.
@@ -152,18 +152,32 @@ products. The UI does not force them to match.
 ## Hourly evolution — Next 24 hours
 
 Custom SVG (no chart library). Dashboard strip, scrubber, and chart share
-one **next 24 hourly rows from the current hour** (or from the first row
-if none match), presented as one **Next 24 hours** group. Fallback first-row
-starts are not labeled Now. Forecast-day drill-down still plots **all hourly
-rows for that date**, including morning hours for that day. Temperature is
-the default metric. Precipitation is offered only when at least one finite
-amount exists, including verified `0`. Hourly wind is not on the public
-contract, so it is not a tab. Values are not converted.
+one **next 24 hourly rows beginning at the provider observation hour**
+(naive `YYYY-MM-DD` + `HH` from `current.observed_at` matched to
+`hourly[].time`), or from the first valid row if none match. That window is
+presented as one **Next 24 hours** group.
+
+| Term | Meaning |
+| --- | --- |
+| **Observed** | Provider current-observation timestamp (`current.observed_at`) |
+| **Now** | Hourly bucket whose naive date/hour matches `observed_at` |
+| **Next 24 hours** | Window starting at that matched hour when present |
+| **Browser timezone** | Does **not** decide which row is Now |
+
+Fallback first-row starts are not labeled Now. Missing or unparseable
+`observed_at`, or a missing exact hour bucket, yields no Now label.
+Forecast-day drill-down still plots **all hourly rows for that date**,
+including morning hours for that day, without inventing a Now marker from
+the browser clock. Temperature is the default metric. Precipitation is
+offered only when at least one finite amount exists, including verified `0`.
+Hourly wind is not on the public contract, so it is not a tab. Values are
+not converted.
 
 The hourly strip shows a surface-colored edge fade when more hours remain
 to the left or right. Selecting an hour scrolls only the strip, never the
-page. The chart keeps a dashed **NOW** marker on the actual current hour and
-a separate solid selected marker when a future hour is previewed.
+page. The chart keeps a dashed **NOW** marker on the provider observation
+hour (when matched) and a separate solid selected marker when a future hour
+is previewed.
 
 The dashboard stacks current conditions, hourly, and the daily list below
 `lg` (1024px) so forecast labels stay readable around 768–900px. From `lg`
@@ -174,7 +188,8 @@ Selecting a strip card or chart point, or moving the scrubber, updates the
 others. Chart selection scrolls the matching card inside the strip (not the
 page). The hero remains **current** weather. A future hour is labeled
 `Forecast at HH:MM` and may preview that hour’s atmosphere. A selectable
-past hour (drill-down) is `At HH:MM`, not a forecast. Returning to Now
+past hour (drill-down) is `At HH:MM`, not a forecast. Past/future is relative
+to the provider observation timeline, not `Date.now()`. Returning to Now
 restores the current condition atmosphere. Observed time does not follow
 the scrubber.
 
@@ -182,9 +197,9 @@ When the window crosses midnight, the scrubber end cap is `Tomorrow HH:MM`
 from `md` up, or `HH:MM +1d` on smaller viewports. Day comparison uses the
 naive `YYYY-MM-DD` prefix on the timestamps, not a timezone conversion.
 
-Timestamps on the public contract are timezone-naive. The UI prints clock
-digits as received and does not convert browser time, UTC, or location
-local time.
+Timestamps on the public contract are timezone-naive. The UI prints Observed
+clock digits as received. Provider timezone semantics (location-local vs UTC)
+are not established by the contract and are not invented here.
 
 ## Forecast-day drill-down
 
