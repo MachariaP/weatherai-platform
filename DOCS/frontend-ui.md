@@ -43,6 +43,9 @@ app/layout.tsx                — Inter, providers, header, footer, mobile nav
 │   ├── ForecastGrid/Card     — daily rows; selected day opens ForecastDaySheet
 │   ├── HourlyScroll          — full hourly strip, current hour aligned
 │   ├── HourlyChart           — next-24h SVG evolution (temperature / precipitation)
+│   ├── HourlyExploration     — shared active hour: strip + scrubber + chart
+│   ├── TimelineScrubber      — Now vs forecast-at-hour control
+│   ├── WeatherAtmosphere     — CSS-only condition/is_day backdrop
 │   ├── CompareView           — explicit two-place comparison (ai omitted)
 │   └── SettingsPanel         — units + AI + saved places + compare entry
 supporting: BottomNav, SiteFooter, ErrorBanner, LoadingSkeleton, icons
@@ -111,9 +114,11 @@ Inter via `next/font` (`--font-inter`). Hierarchy:
   *Search by coordinates*, capability row (7-day / hourly / AI).
 - **Loading** — 8/4 column skeletons matching the loaded dashboard.
 - **Error** — classified titles, user-safe messages, Retry. No internals.
-- **Loaded dashboard** — 8-col current + hourly strip + hourly evolution chart,
-  4-col AI + 7-day. Daily rows open a drill-down (desktop drawer / mobile sheet)
-  from already-fetched `hourly[]`.
+- **Loaded dashboard** — 8-col current + hourly exploration (strip, timeline
+  scrubber, evolution chart), 4-col AI + 7-day. A CSS atmosphere layer sits
+  behind content from `current.weather_code` + `is_day` (or the scrubbed hour
+  when exploring the future). Daily rows open a drill-down (desktop drawer /
+  mobile sheet) from already-fetched `hourly[]`.
 - **Forecast / AI Insights / Settings / Compare** — Settings is units, forecast
   range (3/5/7), AI toggle, saved places, and compare entry. Compare loads at
   most two saved places via `/api/weather` without `ai=true`. Selected forecast
@@ -151,6 +156,13 @@ The dashboard stacks current conditions, hourly, and the daily list below
 `lg` (1024px) so forecast labels stay readable around 768–900px. From `lg`
 up, daily forecast sits in the right column.
 
+Hourly strip, timeline scrubber, and chart share one `selectedTime`. Selecting
+a strip card or chart point, or moving the scrubber, updates the others.
+Chart selection scrolls the matching card inside the strip (not the page).
+The hero remains **current** weather. A future hour is labeled
+`Forecast at HH:MM` and may preview that hour’s atmosphere. Returning to Now
+restores the current condition atmosphere.
+
 ## Forecast-day drill-down
 
 Daily rows are buttons. The selected day is React state only. Hourly detail is
@@ -165,7 +177,9 @@ Search, saved places, recents, GPS, coordinates, and compare all write
 through `LocationProvider`. The combobox stays in the header so shareable
 search and existing journeys keep working. Opening it shows Saved / Recent /
 Actions (Use my location, Enter coordinates, Compare when two or more places
-are saved). Geocoding remains `Browser → /api/geocode → FastAPI → Photon`.
+are saved). On narrow viewports the panel is a bottom sheet; on desktop it
+remains a dropdown under the combobox. Geocoding remains
+`Browser → /api/geocode → FastAPI → Photon`.
 
 ## Compare mode
 
@@ -176,9 +190,21 @@ cache, rate limiter, and circuit breaker still apply.
 
 ## Motion
 
-Open/close, metric tabs, and skeletons use `motion-safe:` transitions.
-`prefers-reduced-motion` already disables pulse/spin in `globals.css`.
-Interaction does not depend on animation.
+Tokens in `globals.css`: instant ~120ms, interaction ~180ms, content ~240ms,
+panel ~300ms, atmosphere ~18s. No motion or chart library: CSS + small React
+state, plus the existing custom SVG chart.
+
+Atmosphere is a fixed, `pointer-events: none`, `aria-hidden` layer. Categories
+are presentation-only from public `weather_code`: CLEAR, PARTLY_CLOUDY, CLOUDY,
+RAIN, HEAVY_RAIN, SNOW, FOG, STORM, UNKNOWN. UNKNOWN and the empty state keep
+the forest-black theme. Location change still clears weather (and atmosphere)
+before the next payload.
+
+Hero icons may loop slowly; forecast/hourly icons stay static. Temperature and
+condition text crossfade on change.
+
+`prefers-reduced-motion: reduce` stops atmosphere and icon loops and the
+content fade. Interaction does not depend on animation.
 
 ## Accessibility
 
@@ -186,9 +212,10 @@ Landmarks (`header`, `main`, `footer`, labeled `nav`s), skip link,
 visible `:focus-visible` rings, labeled inputs, `role="switch"` / 
 `aria-pressed` on toggles. Bottom nav is `lg:hidden` so tablet keeps
 touch tabs; desktop Dashboard / Forecast live in the header from `lg` up.
-The hourly chart has a text summary and metric radios. Forecast drill-down
-is a dialog with focus trap, Escape, and a close button. Compare cards use
-per-location headings and independent loading/error status.
+The hourly chart has a text summary and metric radios. The timeline scrubber
+is a labeled slider with `aria-valuetext` (Now vs forecast). Forecast
+drill-down is a dialog with focus trap, Escape, and a close button. Compare
+cards use per-location headings and independent loading/error status.
 
 ## Deliberate constraints
 

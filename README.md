@@ -105,6 +105,8 @@ frontend generated-API-type drift check, lint, `tsc --noEmit`, Vitest,
 - 7-day forecast by default, with 3- or 5-day range in Settings / forecast header
 - Hourly outlook with precipitation amounts when available
 - Hourly evolution chart (next 24 hours; temperature / precipitation)
+- Timeline scrubber + hourly strip/chart sync (future hours labeled as forecast)
+- Subtle weather atmosphere from condition + day/night (`prefers-reduced-motion` respected)
 - Forecast-day drill-down from existing hourly rows (no extra WeatherAI call)
 - Unified location switcher (search, saved, recent, GPS, coordinates)
 - Compare two saved places (explicit selection; `ai` omitted; FastAPI cache still applies)

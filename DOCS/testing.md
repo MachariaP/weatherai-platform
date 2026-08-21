@@ -89,6 +89,10 @@ one mobile drill-down): hourly chart metric switch, forecast-day dialog,
 unified switcher actions, two-favorite compare without `ai=true` or a third
 favorite fetch, and no page-level overflow.
 
+Premium experience adds Vitest for atmosphere categories, shared hourly
+selection, and Now vs forecast scrubber semantics, plus Playwright journeys
+for strip/scrubber sync and a reduced-motion smoke.
+
 Lower-level storage, limit, and preference fallback details stay in Vitest.
 
 Playwright is a **separate CI job** from lint/Vitest/`tsc` so Chromium install
