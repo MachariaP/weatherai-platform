@@ -32,6 +32,15 @@ const NAIROBI_EXPLORATION = weatherPayload({
   place_name: NAIROBI_KE.label,
   temperature: 19.9,
   description: "Overcast",
+  current: {
+    temperature: 19.9,
+    wind_speed: 4,
+    wind_direction: 111,
+    weather_code: 3,
+    weather_description: "Overcast",
+    is_day: true,
+    observed_at: "2026-08-20T15:30",
+  },
   daily: [
     {
       date: "2026-08-20",
@@ -277,5 +286,53 @@ test.describe("advanced weather exploration", () => {
     expect(api.weatherRequests).toHaveLength(2);
     expect(api.weatherRequests.every((req) => !req.url().includes("ai=true"))).toBe(true);
     expect(api.weatherRequests.some((req) => req.url().includes("lat=-0.0917"))).toBe(false);
+  });
+});
+
+test.describe("provider-relative hourly Now", () => {
+  test.use({ timezoneId: "America/New_York" });
+
+  test("keeps Now on the observation hour under America/New_York", async ({ page }) => {
+    const api = await installApiMock(page);
+    api.geocodeJson(GEOCODE_NAIROBI);
+    api.weatherJson(NAIROBI_NEXT24);
+    await openHome(page);
+    await typePlace(page, "Nairobi");
+    await waitForSuggestion(page, /Nairobi, Kenya/);
+    await page.getByRole("option", { name: /Nairobi, Kenya/ }).click();
+    await expectDashboard(page);
+
+    await expect(page.getByText("Observed 09:45")).toBeVisible();
+    const strip = page.getByRole("list", { name: "Hourly forecast times" });
+    await expect(strip.getByRole("button").first()).toContainText("Now");
+    await expect(
+      page.getByRole("slider", { name: "Hourly weather timeline" })
+    ).toHaveAttribute("aria-valuetext", "Current conditions at 09:00");
+    await expect(page.getByTestId("chart-now-marker")).toHaveCount(1);
+    await expect(page.getByTestId("chart-now-marker")).toHaveAttribute("x1", "40");
+  });
+});
+
+test.describe("provider-relative hourly Now (Tokyo)", () => {
+  test.use({ timezoneId: "Asia/Tokyo" });
+
+  test("keeps Now on the observation hour under Asia/Tokyo", async ({ page }) => {
+    const api = await installApiMock(page);
+    api.geocodeJson(GEOCODE_NAIROBI);
+    api.weatherJson(NAIROBI_NEXT24);
+    await openHome(page);
+    await typePlace(page, "Nairobi");
+    await waitForSuggestion(page, /Nairobi, Kenya/);
+    await page.getByRole("option", { name: /Nairobi, Kenya/ }).click();
+    await expectDashboard(page);
+
+    await expect(page.getByText("Observed 09:45")).toBeVisible();
+    await expect(
+      page.getByRole("list", { name: "Hourly forecast times" }).getByRole("button").first()
+    ).toContainText("Now");
+    await expect(page.getByTestId("chart-now-marker")).toHaveCount(1);
+    await expect(
+      page.getByRole("slider", { name: "Hourly weather timeline" })
+    ).toHaveAttribute("aria-valuetext", "Current conditions at 09:00");
   });
 });
