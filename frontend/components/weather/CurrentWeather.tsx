@@ -18,15 +18,13 @@ import {
   SunIcon,
   GaugeIcon,
   MapPinIcon,
-  CheckIcon,
-  ClockIcon,
 } from "@/components/ui/icons";
 
 interface Props {
   data: CurrentWeatherData;
   units: "metric" | "imperial";
   location: string;
-  cacheStatus: string | null;
+  cacheStatus?: string | null;
   lat?: number | null;
   lon?: number | null;
   actions?: ReactNode;
@@ -51,14 +49,14 @@ function formatTemperature(value: unknown): string {
 
 function Detail({ icon, label, value, sub, extra }: DetailProps) {
   return (
-    <div className="flex min-h-[7.5rem] flex-col justify-between rounded-card border border-border bg-surface p-4 transition-colors hover:border-border-strong">
-      <dt className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.14em] text-text-muted">
+    <div className="flex min-h-[7.5rem] flex-col justify-between rounded-card border border-border/70 bg-card p-4">
+      <dt className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.14em] text-text-secondary">
         <span className="text-text-muted">{icon}</span>
         {label}
       </dt>
       <dd>
         <p className="truncate text-xl font-semibold tabular-nums text-text">{value}</p>
-        {sub ? <p className="mt-1 text-xs text-text-muted">{sub}</p> : null}
+        {sub ? <p className="mt-1 text-xs text-text-secondary">{sub}</p> : null}
         {extra}
       </dd>
     </div>
@@ -75,7 +73,6 @@ export function CurrentWeather({
   data,
   units,
   location,
-  cacheStatus,
   lat = null,
   lon = null,
   actions,
@@ -85,7 +82,6 @@ export function CurrentWeather({
     isFiniteNumber(data.weather_code) ? data.weather_code : -1,
     isDay
   );
-  const isCached = cacheStatus === "HIT";
   const description = data.weather_description?.trim() || "Conditions unavailable";
   const temperature = formatTemperature(data.temperature);
   const hasTemp = temperature !== "Unavailable";
@@ -118,28 +114,12 @@ export function CurrentWeather({
         ) : null}
       </header>
 
-      <div className="grid gap-4 md:grid-cols-[minmax(0,1.35fr)_minmax(16rem,1fr)]">
-        <div className="relative min-h-[200px] overflow-hidden rounded-card border border-border bg-surface p-4">
+      <div className="grid gap-3 md:grid-cols-[minmax(0,1.5fr)_minmax(14rem,1fr)] md:gap-4">
+        <div className="relative min-h-[200px] overflow-hidden rounded-card border border-border bg-surface p-4 sm:p-5">
           <div className="relative z-10 mb-6 flex items-center justify-between gap-3">
-            <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-text-muted">
+            <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-text-secondary">
               Current conditions
             </p>
-            {cacheStatus ? (
-              <span
-                className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] font-medium ${
-                  isCached
-                    ? "border-border bg-card text-text-secondary"
-                    : "border-accent/20 bg-accent/10 text-accent"
-                }`}
-              >
-                {isCached ? (
-                  <ClockIcon className="h-3 w-3" />
-                ) : (
-                  <CheckIcon className="h-3 w-3" />
-                )}
-                {isCached ? "Cached" : "Live"}
-              </span>
-            ) : null}
           </div>
 
           <div className="relative z-10 flex flex-wrap items-end gap-3">

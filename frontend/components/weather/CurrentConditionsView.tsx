@@ -88,6 +88,7 @@ export function CurrentConditionsView() {
   const refreshBar = (
     <ObservedRefresh
       observedAt={data.current.observed_at}
+      cacheStatus={cacheStatus}
       onRefresh={refetch}
       refreshing={isRefreshing}
     />
@@ -98,7 +99,6 @@ export function CurrentConditionsView() {
       data={data.current}
       units={units}
       location={heading}
-      cacheStatus={cacheStatus}
       lat={data.lat}
       lon={data.lon}
       actions={<FavoriteToggle />}

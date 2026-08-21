@@ -66,7 +66,7 @@ export function ForecastCard({ day, units, selected = false, onSelect }: Props) 
             isToday || selected ? "text-accent" : "text-text-secondary"
           }`}
         />
-        <p className="min-w-0 flex-1 break-words text-left text-xs leading-snug text-text-muted line-clamp-2">
+        <p className="min-w-0 flex-1 break-words text-left text-xs leading-snug text-text-secondary line-clamp-2">
           {description}
         </p>
       </div>
