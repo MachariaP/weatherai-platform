@@ -1,9 +1,9 @@
 # WeatherAI
 
-Full-stack weather exploration with a Next.js frontend and FastAPI backend. Look up conditions by place or coordinates, explore hourly and daily forecasts, and compare saved locations—while keeping provider credentials and upstream traffic on the server.
+WeatherAI is a full-stack weather exploration platform built with Next.js and FastAPI. Search by place or coordinates, explore current and forecast conditions, save locations, and compare places while keeping provider credentials and upstream integrations on the server.
 
 ```
-Browser → Next.js (/api/*) → FastAPI → WeatherAI / Photon / IP geolocation
+Browser → Next.js → FastAPI → WeatherAI / Photon / IP geolocation
 ```
 
 [![CI](https://github.com/MachariaP/weatherai-platform/actions/workflows/ci.yml/badge.svg)](https://github.com/MachariaP/weatherai-platform/actions/workflows/ci.yml)
@@ -28,24 +28,22 @@ Browser → Next.js (/api/*) → FastAPI → WeatherAI / Photon / IP geolocation
 
 ## Overview
 
-WeatherAI is a responsive dashboard for current conditions, daily forecast, and hourly exploration. Locations resolve to coordinates before weather is fetched. Shareable URLs use `/?lat=&lon=`.
+WeatherAI is a responsive dashboard for current conditions, daily forecasts, and hourly exploration. Locations resolve to coordinates before weather is fetched, and shareable URLs use `/?lat=&lon=`.
 
-The browser talks only to same-origin Next.js routes. Next.js proxies to FastAPI with a server-only backend URL. FastAPI owns WeatherAI authentication, timeouts, retries, response normalization, caching, and resilience controls. Place search and reverse geocoding use Photon through FastAPI; approximate location uses an IP lookup provider when GPS is unavailable.
+The browser calls same-origin Next.js routes only. Next.js proxies to FastAPI with a server-only backend URL. FastAPI owns authentication, timeouts, retries, response normalization, caching, and resilience. Place search and reverse geocoding go through Photon via FastAPI; approximate location uses IP geolocation when GPS is unavailable.
 
 ## Features
 
-- **Location discovery** — place search suggestions, coordinate entry, browser geolocation with IP fallback when GPS is unavailable (not after an explicit permission denial)
-- **Recents and saved places** — last 8 locations and up to 20 favorites in `localStorage` (coordinates and labels only)
-- **Shareable links** — `/?lat=&lon=` as the canonical location identity
-- **Current conditions** — temperature, wind, description, day/night, optional extras when the upstream payload provides them
-- **Observed time and refresh** — display `observed_at` clock digits; refresh reissues the normal FastAPI request (TTL cache may still return `X-Cache: HIT`)
-- **Daily and hourly forecast** — selectable 3 / 5 / 7-day range; hourly strip, timeline scrubber, and temperature/precipitation charts over a shared window
-- **Forecast-day drill-down** — filter existing hourly rows by day without an extra WeatherAI call
-- **Compare** — two saved places side by side; weather fetched only for selected places; AI summary omitted to avoid multiplying AI quota
-- **Preferences** — metric/imperial units, forecast range, optional AI insight preference
-- **UI polish** — loading skeletons, empty and error states, condition-based atmosphere, `prefers-reduced-motion`, responsive layout
-
-Precipitation amounts treat `0` as verified zero; missing values are omitted rather than fabricated.
+- **Location discovery** — Search by place, enter coordinates, or use browser geolocation with an approximate fallback
+- **Recents and saved places** — Keep recent locations and favorites in the browser (`localStorage`)
+- **Shareable links** — Open and share weather via `/?lat=&lon=`
+- **Current conditions** — Temperature, wind, description, day/night, and optional extras when upstream data provides them
+- **Observed time and refresh** — Show the observation clock and refresh weather through the backend
+- **Daily and hourly forecast** — Choose a 3 / 5 / 7-day range; explore hourly conditions with a strip, timeline, and charts
+- **Forecast-day drill-down** — Inspect hourly rows for a selected day without an extra weather request
+- **Compare** — Place two saved locations side by side
+- **Preferences** — Metric or imperial units, forecast range, and optional AI insight display
+- **Responsive UI** — Loading, empty, and error states; condition-based atmosphere; reduced-motion support
 
 ## Architecture
 
@@ -53,23 +51,23 @@ Precipitation amounts treat `0` as verified zero; missing values are omitted rat
 Browser
   |
   v
-Next.js (UI + same-origin /api/* proxies)
+Next.js
   |
   v
-FastAPI (public contract, credentials, cache, resilience)
-  |-----> WeatherAI (weather by lat/lon)
-  |-----> Photon (search / reverse)
-  `-----> IP geolocation (approx. location)
+FastAPI
+  |----> WeatherAI
+  |----> Photon
+  `----> IP geolocation
 ```
 
-| Layer | Owns |
+| Layer | Responsibility |
 | --- | --- |
-| Next.js | Presentation, client state, preference/storage UX, validated same-origin `/api/*` handlers |
-| FastAPI | Provider credentials, upstream HTTP, normalization, TTL caches, rate limit, circuit breaker, CORS, logging |
+| Next.js | UI, client state, local preferences, same-origin `/api/*` routes |
+| FastAPI | Provider communication, credentials, normalization, caching, and resilience |
 
-There is no application database. Preferences, recents, and favorites live in the browser. Weather and geocode caches are in-memory on the FastAPI process.
+Preferences, recents, and saved places are browser-local. Weather and geocode caches are in-memory on the FastAPI process. There is no application database.
 
-Deeper boundaries: [DOCS/architecture.md](DOCS/architecture.md).
+Details: [DOCS/architecture.md](DOCS/architecture.md).
 
 ## Technology stack
 
@@ -77,30 +75,30 @@ Deeper boundaries: [DOCS/architecture.md](DOCS/architecture.md).
 | --- | --- |
 | Next.js 16 (App Router) | Frontend app and browser-facing `/api/*` proxies |
 | React 19 | UI |
-| TypeScript | Frontend typing (`tsc --noEmit` in CI) |
+| TypeScript | Frontend typing |
 | Tailwind CSS 4 | Styling |
-| Python 3.12 | Backend runtime in CI |
+| Python 3.12 | Backend runtime (CI) |
 | FastAPI | Public HTTP API and OpenAPI source of truth |
-| Pydantic / pydantic-settings | Request/response models and settings |
-| httpx + respx | Upstream client and mocked HTTP in pytest |
+| Pydantic / pydantic-settings | Models and settings |
+| httpx + respx | Upstream HTTP client and mocked HTTP in tests |
 | Vitest + Testing Library | Frontend unit and component tests |
 | Playwright | Deterministic browser journeys against mocked `/api/*` |
 | pytest + pytest-cov | Backend tests and coverage |
 | Ruff | Backend lint |
 | ESLint (`eslint-config-next`) | Frontend lint |
-| openapi-typescript | Generate `frontend/lib/generated/api-schema.ts` from FastAPI OpenAPI |
-| GitHub Actions | Continuous integration (no continuous deployment) |
+| openapi-typescript | Generated frontend types from FastAPI OpenAPI |
+| GitHub Actions | Continuous integration |
 
-CI uses Node **20**. `frontend/package.json` does not pin an `engines` field.
+CI runs on Node.js 20 and Python 3.12.
 
 ## Getting started
 
 ### Prerequisites
 
-- Python 3.12 (matches CI)
-- Node.js (20 in CI)
+- Python 3.12
+- Node.js 20 (as used in CI)
 - npm
-- A WeatherAI API key (`wai_…`) for live weather calls through FastAPI
+- A WeatherAI API key (`wai_…`) for live weather through FastAPI
 
 ### Clone
 
@@ -116,22 +114,22 @@ cd backend
 python3 -m venv .venv
 source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
-cp .env.example .env        # set WEATHERAI_API_KEY
+cp .env.example .env
 uvicorn app.main:app --reload --port 8000
 ```
 
-Liveness: `GET http://localhost:8000/health` (does not call WeatherAI).
+Set `WEATHERAI_API_KEY` in `backend/.env`. Health check: `GET http://localhost:8000/health`.
 
 ### Frontend
 
 ```bash
 cd frontend
 npm ci
-cp .env.local.example .env.local   # BACKEND_URL=http://localhost:8000
+cp .env.local.example .env.local
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+Set `BACKEND_URL=http://localhost:8000` in `frontend/.env.local`, then open [http://localhost:3000](http://localhost:3000).
 
 ### Generated API types
 
@@ -140,7 +138,7 @@ cd frontend
 npm run generate:api-types
 ```
 
-Requires the backend Python environment. Does not need a live WeatherAI key. CI fails if `frontend/lib/generated/api-schema.ts` drifts (`npm run check:api-types`). Do not edit the generated file by hand.
+Requires the backend Python environment. Does not need a live WeatherAI key. CI checks drift with `npm run check:api-types`. Do not edit `frontend/lib/generated/api-schema.ts` by hand.
 
 ## Configuration
 
@@ -152,25 +150,21 @@ Never commit real secrets.
 | --- | --- | --- |
 | `WEATHERAI_API_KEY` | Yes (for weather) | WeatherAI key (`wai_…`); backend only |
 | `WEATHERAI_BASE_URL` | No | Default `https://api.weather-ai.co` |
-| `CORS_ORIGINS` | For non-default | Explicit frontend origins; wildcard `*` rejected |
+| `CORS_ORIGINS` | For non-default | Explicit frontend origins; `*` is rejected |
 | `RATE_LIMIT_REQUESTS` | No | Uncached WeatherAI calls per identity per window (default 60) |
-| `RATE_LIMIT_WINDOW_SECONDS` | No | Limiter window seconds (default 60) |
-| `CIRCUIT_FAILURE_THRESHOLD` | No | Consecutive qualifying failures before OPEN (default 5) |
-| `CIRCUIT_COOLDOWN_SECONDS` | No | Breaker cooldown seconds (default 30) |
-
-Timeout and retry defaults live in settings (`weatherai_timeout`, `weatherai_max_retries`) and are not listed in `.env.example`.
+| `RATE_LIMIT_WINDOW_SECONDS` | No | Limiter window in seconds (default 60) |
+| `CIRCUIT_FAILURE_THRESHOLD` | No | Failures before the breaker opens (default 5) |
+| `CIRCUIT_COOLDOWN_SECONDS` | No | Breaker cooldown in seconds (default 30) |
 
 ### Frontend (`frontend/.env.local`)
 
 | Variable | Required | Description |
 | --- | --- | --- |
-| `BACKEND_URL` | Yes | FastAPI origin for server-side proxies (for example `http://localhost:8000`) |
+| `BACKEND_URL` | Yes | FastAPI origin for server-side proxies |
 
-There are no `NEXT_PUBLIC_` WeatherAI credentials in this project.
+Provider credentials are never exposed as `NEXT_PUBLIC_*` variables.
 
 ## API contract
-
-Browser traffic stays same-origin to Next.js. Next.js proxies to FastAPI using server-only `BACKEND_URL`. FastAPI talks to upstream providers.
 
 | Browser route | FastAPI route | Upstream |
 | --- | --- | --- |
@@ -178,21 +172,21 @@ Browser traffic stays same-origin to Next.js. Next.js proxies to FastAPI using s
 | `GET /api/geocode` | `GET /geocode` | Photon |
 | `GET /api/reverse` | `GET /reverse` | Photon |
 | `GET /api/geolocate` | `GET /geolocate` | ipwho.is |
-| — | `GET /health` | none (process liveness) |
+| — | `GET /health` | none |
 
-Weather query parameters (validated at Next.js and again on FastAPI): `lat`, `lon`, optional `days` (1–7), `units` (`metric` \| `imperial`), `ai` (`true` \| `false`), `lang`.
+Weather query parameters: `lat`, `lon`, optional `days` (1–7), `units` (`metric` \| `imperial`), `ai` (`true` \| `false`), `lang`.
 
-The frontend consumes the normalized public contract, not raw WeatherAI JSON. Public TypeScript types are generated from FastAPI OpenAPI into `frontend/lib/generated/api-schema.ts` (aliases in `frontend/lib/types.ts`).
+The frontend consumes FastAPI’s normalized public models, not raw provider JSON. Public TypeScript types are generated from OpenAPI into `frontend/lib/generated/api-schema.ts`.
 
-Full shapes and errors: [DOCS/api-reference.md](DOCS/api-reference.md).
+Unavailable metrics stay unavailable; verified zeros are shown as `0`.
+
+Shapes and errors: [DOCS/api-reference.md](DOCS/api-reference.md).
 
 ## Testing
 
 ### Backend
 
-- pytest + respx (no live WeatherAI in CI)
-- Normalization, client, retry, cache, rate limit, circuit breaker, observability, OpenAPI contract coverage
-- Optional live smoke: `backend/tests/smoke_real_api.py` (requires a real key; excluded from default pytest and CI)
+pytest + respx cover normalization, the upstream client, retries, caching, rate limiting, the circuit breaker, observability, and the OpenAPI contract. Live WeatherAI is not used in CI. Optional live smoke lives in `backend/tests/smoke_real_api.py` and is excluded from the default suite.
 
 ```bash
 cd backend
@@ -203,7 +197,7 @@ pytest --cov=app --cov-report=term-missing
 
 ### Frontend
 
-- Vitest + Testing Library for helpers, hooks, providers, components, `/api` routes, and security-boundary checks
+Vitest and Testing Library cover helpers, hooks, providers, components, `/api` routes, and security-boundary checks.
 
 ```bash
 cd frontend
@@ -215,30 +209,26 @@ npm run build
 
 ### Browser (Playwright)
 
-- Deterministic journeys with mocked same-origin `/api/*`
-- Runs against production `next start` on port 3100
-- Not a live WeatherAI / Photon / FastAPI end-to-end suite
+Deterministic journeys mock same-origin `/api/*` against a production `next start` build on port 3100. This is not a live WeatherAI / Photon / FastAPI end-to-end suite.
 
 ```bash
 cd frontend
-npx playwright install chromium   # once per machine
+npx playwright install chromium
 npm run test:e2e
 ```
 
 ### Quality gates
 
-| Gate | Command / tool |
+| Gate | Tool |
 | --- | --- |
 | Backend lint | Ruff |
-| Backend tests | pytest with coverage |
+| Backend tests | pytest |
 | Generated API drift | `npm run check:api-types` |
 | Frontend lint | ESLint |
 | Frontend types | `tsc --noEmit` |
 | Frontend unit | Vitest |
 | Production build | `npm run build` |
 | Browser | Playwright |
-
-mypy is not configured in this repository.
 
 Details: [DOCS/testing.md](DOCS/testing.md).
 
@@ -249,30 +239,29 @@ Workflow: [`.github/workflows/ci.yml`](.github/workflows/ci.yml) (push and pull 
 | Job | Checks |
 | --- | --- |
 | Backend | Python 3.12, Ruff, pytest with coverage |
-| Frontend | OpenAPI generation deps, Node 20, `npm ci`, API type drift, ESLint, `tsc`, Vitest, production build |
-| Playwright | Node 20, Chromium, production build, deterministic e2e; artifacts on failure |
+| Frontend | OpenAPI generation deps, Node 20, API type drift, ESLint, `tsc`, Vitest, production build |
+| Playwright | Chromium, production build, deterministic e2e |
 
-This is continuous integration only. The workflow does not deploy, publish containers, or provision hosts.
+CI does not deploy or provision hosts.
 
 ## Reliability and security
 
 | Control | Role |
 | --- | --- |
-| WeatherAI key only on FastAPI | Keeps credentials out of the browser and Next.js bundle |
-| Same-origin `/api/*` + server-only `BACKEND_URL` | Keeps upstream hosts and secrets off the client |
-| Validation at Next.js and FastAPI | Rejects bad `lat` / `lon` / `days` / `units` / `ai` before upstream work |
-| Upstream timeout (default 10s) | Bounds hang time on WeatherAI |
-| Bounded retries on upstream 5xx | Recovers from transient server errors; does not retry 4xx / 429 / timeout by default |
-| Typed error mapping | Upstream failures become structured app errors; WeatherAI 401 is not forwarded as browser 401 |
-| In-memory TTL weather/geocode cache (default 5 minutes) | Reduces quota burn; Next.js uses `cache: "no-store"` so FastAPI remains the single cache owner |
-| Application rate limit (uncached misses) | Cache HITs bypass the limiter |
-| Circuit breaker (WeatherAI 5xx / timeout / network finals) | Fail-fast after repeated upstream failure; cache HITs can still succeed while open |
-| Structured logs + `X-Request-ID` | Correlates requests across Next.js and FastAPI |
-| Log redaction | Avoids writing secrets into log lines |
-| Explicit CORS origins | No wildcard `*`; credentials disabled |
-| Security-boundary Vitest suite | Asserts no `NEXT_PUBLIC_` WeatherAI/backend secrets and no upstream URLs in client-facing code |
+| WeatherAI key on FastAPI only | Credentials stay off the browser and Next.js bundle |
+| Same-origin `/api/*` + server-only `BACKEND_URL` | Upstream hosts and secrets stay server-side |
+| Validation at Next.js and FastAPI | Invalid requests fail before upstream work |
+| Upstream timeout | Default 10s on WeatherAI calls |
+| Bounded retries | Retries transient upstream 5xx; does not retry 4xx, 429, or timeouts by default |
+| Typed error mapping | Upstream failures become structured app errors |
+| TTL weather/geocode cache | Default 5 minutes; Next.js uses `cache: "no-store"` so FastAPI remains the cache owner |
+| Application rate limit | Applies to uncached WeatherAI misses; cache HITs bypass the budget |
+| Circuit breaker | Opens after repeated WeatherAI 5xx / timeout / network failures |
+| Request IDs and structured logs | Correlate traffic across Next.js and FastAPI; secrets are redacted |
+| Explicit CORS | Listed origins only; credentials disabled |
+| Security-boundary tests | Guard against leaking secrets or upstream URLs to the client |
 
-Rate limiter and circuit breaker are process-local. They fit a single FastAPI worker topology; they are not a multi-replica control plane.
+The cache, rate limiter, and circuit breaker are process-local and designed for the current single-worker backend topology. Shared state would be required for multi-instance deployment.
 
 See [DOCS/resilience.md](DOCS/resilience.md) and [DOCS/architecture.md](DOCS/architecture.md).
 
@@ -280,35 +269,35 @@ See [DOCS/resilience.md](DOCS/resilience.md) and [DOCS/architecture.md](DOCS/arc
 
 ### Server-side provider boundary
 
-FastAPI owns WeatherAI communication and credentials. Next.js stays a thin validated proxy plus UI.
+FastAPI owns provider communication and credentials. Next.js remains UI plus a thin validated proxy.
 
-### Public versus upstream models
+### Normalized public contract
 
-Raw provider payloads are normalized into a stable public contract so the UI does not depend on upstream field names.
+Raw upstream payloads are mapped into a stable application model so the UI does not depend on provider field names.
 
 ### Generated API contracts
 
-FastAPI OpenAPI drives `frontend/lib/generated/api-schema.ts` so public types stay aligned with the backend.
+OpenAPI from FastAPI drives `frontend/lib/generated/api-schema.ts`.
 
 ### Single cache owner
 
-FastAPI owns the weather TTL cache. Next.js does not introduce a second weather cache.
+FastAPI owns weather caching. Next.js does not add a second weather cache.
 
-### Coordinates as location identity
+### Coordinates as identity
 
-Labels are presentation metadata. Weather lookups and shareable URLs are coordinate-based.
+Labels are presentation metadata. Weather requests and shareable URLs are coordinate-based; place names are resolved through the geocoding layer.
 
-### Null semantics
+### Missing-data semantics
 
-Unavailable metrics and precipitation are omitted. Verified zeros are shown as `0`.
+Unavailable values remain unavailable. Verified zeros are shown as `0`.
 
 ### Process-local resilience
 
-Under the intended one FastAPI worker topology, in-memory cache, limiter, and breaker are sufficient. Shared Redis is deferred until multi-replica hosting requires it. See [DOCS/deployment.md](DOCS/deployment.md).
+In-memory cache, limiter, and breaker match the intended single-worker topology. See [DOCS/deployment.md](DOCS/deployment.md).
 
 ### Hourly “Now” semantics
 
-Public `observed_at` / hourly `time` strings are timezone-naive. Hourly “Now” is the bucket matching `observed_at`’s naive date/hour, not the browser clock. Details: [DOCS/frontend-ui.md](DOCS/frontend-ui.md).
+Public timestamps are timezone-naive. Hourly “Now” is anchored to the provider observation hour (`current.observed_at`), not the browser clock. Details: [DOCS/frontend-ui.md](DOCS/frontend-ui.md).
 
 ## Project documentation
 
@@ -319,17 +308,18 @@ Public `observed_at` / hourly `time` strings are timezone-naive. Hourly “Now�
 | [DOCS/frontend-ui.md](DOCS/frontend-ui.md) | UI structure and product semantics |
 | [DOCS/testing.md](DOCS/testing.md) | Test strategy and commands |
 | [DOCS/resilience.md](DOCS/resilience.md) | Cache, limiter, and breaker behavior |
-| [DOCS/deployment.md](DOCS/deployment.md) | Intended topology; not a live deploy record |
+| [DOCS/deployment.md](DOCS/deployment.md) | Intended topology (not a live deploy record) |
 
 ## Known limitations
 
-- No public production instance is currently maintained; deployment topology is documented as intent only
-- Cache, rate limiter, and circuit breaker are process-local and reset on restart
-- Saved places and preferences are browser-local (`localStorage`); there is no account sync
-- WeatherAI Free constraints apply (coordinates-only weather; AI summaries may be `null` even when requested)
-- Optional current extras (feels-like, humidity, UV, pressure, precip) appear only when FastAPI can populate them
-- Public weather timestamps carry no timezone metadata
-- Continuous deployment is not configured; CI verifies quality only
+- No maintained public production deployment
+- Backend cache, rate limiter, and circuit breaker are process-local
+- Saved places and preferences are browser-local; there is no account sync
+- Weather requests use coordinates; place names are resolved separately through geocoding
+- AI summaries may be unavailable even when requested
+- Some current-condition metrics appear only when upstream data provides them
+- Public weather timestamps have no timezone metadata
+- Continuous deployment is not configured
 
 ## License
 
