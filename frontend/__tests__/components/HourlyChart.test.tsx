@@ -1,12 +1,16 @@
 /**
  * @vitest-environment jsdom
  */
-import { describe, it, expect, afterEach } from "vitest";
+import { describe, it, expect, afterEach, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { HourlyChart } from "@/components/weather/HourlyChart";
 import type { HourlyForecast } from "@/lib/types";
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.useRealTimers();
+});
+
 
 const HOURS: HourlyForecast[] = [
   {
@@ -82,5 +86,35 @@ describe("HourlyChart", () => {
     const circles = document.querySelectorAll("circle");
     expect(circles[1]?.getAttribute("r")).toBe("4.5");
     expect(circles[0]?.getAttribute("r")).toBe("2");
+  });
+
+  it("keeps the Now marker while a future selected marker moves", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-20T10:30:00"));
+    const hours = [
+      HOURS[0],
+      HOURS[1],
+      {
+        time: "2026-08-20T12:00",
+        temperature: 21,
+        precipitation: 0,
+        weather_code: 3,
+        weather_description: "Overcast",
+      },
+    ];
+    const { rerender } = render(
+      <HourlyChart hours={hours} units="metric" range="all" selectedTime="2026-08-20T10:00" />
+    );
+    expect(screen.getByTestId("chart-now-marker")).toBeDefined();
+    expect(screen.queryByTestId("chart-selected-marker")).toBeNull();
+    rerender(
+      <HourlyChart hours={hours} units="metric" range="all" selectedTime="2026-08-20T12:00" />
+    );
+    const nowX = screen.getByTestId("chart-now-marker").getAttribute("x1");
+    const selectedX = screen.getByTestId("chart-selected-marker").getAttribute("x1");
+    expect(nowX).toBeTruthy();
+    expect(selectedX).toBeTruthy();
+    expect(selectedX).not.toBe(nowX);
+    vi.useRealTimers();
   });
 });

@@ -246,4 +246,43 @@ describe("HourlyScroll", () => {
     fireEvent.click(screen.getByRole("button", { name: /Hour 14/ }));
     expect(onSelectTime).toHaveBeenCalledWith("2026-08-20T14:00");
   });
+
+  it("shows a right-edge fade when more hours remain", () => {
+    Object.defineProperty(HTMLElement.prototype, "clientWidth", {
+      configurable: true,
+      get() {
+        return this.getAttribute("role") === "list" ? 200 : 80;
+      },
+    });
+    Object.defineProperty(HTMLElement.prototype, "scrollWidth", {
+      configurable: true,
+      get() {
+        return this.getAttribute("role") === "list" ? 800 : 80;
+      },
+    });
+    render(<HourlyScroll hours={hoursForDay()} units="metric" />);
+    expect(screen.getByTestId("hourly-scroll-fade-right")).toBeDefined();
+    expect(screen.queryByTestId("hourly-scroll-fade-left")).toBeNull();
+  });
+
+  it("hides the right fade at the end of the strip", () => {
+    Object.defineProperty(HTMLElement.prototype, "clientWidth", {
+      configurable: true,
+      get() {
+        return this.getAttribute("role") === "list" ? 200 : 80;
+      },
+    });
+    Object.defineProperty(HTMLElement.prototype, "scrollWidth", {
+      configurable: true,
+      get() {
+        return this.getAttribute("role") === "list" ? 800 : 80;
+      },
+    });
+    render(<HourlyScroll hours={hoursForDay()} units="metric" />);
+    const list = screen.getByRole("list", { name: "Hourly forecast times" });
+    Object.defineProperty(list, "scrollLeft", { configurable: true, writable: true, value: 600 });
+    fireEvent.scroll(list);
+    expect(screen.queryByTestId("hourly-scroll-fade-right")).toBeNull();
+    expect(screen.getByTestId("hourly-scroll-fade-left")).toBeDefined();
+  });
 });

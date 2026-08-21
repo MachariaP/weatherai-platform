@@ -66,14 +66,11 @@ describe("CurrentWeather", () => {
     expect(screen.getByText("Direction: S")).toBeDefined();
   });
 
-  it("shows Live badge on cache miss", () => {
+  it("keeps cache freshness out of the hero card", () => {
     renderHero({}, { cacheStatus: "MISS" });
-    expect(screen.getByText("Live")).toBeDefined();
-  });
-
-  it("shows Cached badge on cache hit", () => {
+    expect(screen.queryByText(/Live|Cached/)).toBeNull();
     renderHero({}, { cacheStatus: "HIT" });
-    expect(screen.getByText("Cached")).toBeDefined();
+    expect(screen.queryByText(/Live|Cached/)).toBeNull();
   });
 
   it("omits the freshness badge when no cache status is available", () => {

@@ -116,10 +116,22 @@ describe("HourlyExploration", () => {
     render(<HourlyExploration hours={long} units="metric" />);
     expect(screen.getAllByRole("listitem")).toHaveLength(24);
     expect(screen.getByRole("heading", { name: "Next 24 hours" })).toBeDefined();
-    expect(screen.getByText("Tomorrow 09:00")).toBeDefined();
+    expect(screen.getByText(/Through Tomorrow 09:00/)).toBeDefined();
     expect(screen.queryByText("Hour 9")).toBeNull();
     expect(screen.getByText("Hour 10")).toBeDefined();
     expect(screen.getByText("Hour 33")).toBeDefined();
+  });
+
+  it("keeps Now chart marker while selecting a future hour", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-20T10:30:00"));
+    render(<HourlyExploration hours={HOURS} units="metric" />);
+    const nowX = screen.getByTestId("chart-now-marker").getAttribute("x1");
+    fireEvent.change(screen.getByRole("slider", { name: "Hourly weather timeline" }), {
+      target: { value: "2" },
+    });
+    expect(screen.getByTestId("chart-now-marker").getAttribute("x1")).toBe(nowX);
+    expect(screen.getByTestId("chart-selected-marker").getAttribute("x1")).not.toBe(nowX);
   });
 
   it("does not label a fallback first hour as Now", () => {
