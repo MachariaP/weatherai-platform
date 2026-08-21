@@ -53,7 +53,7 @@ export function ForecastCard({ day, units, selected = false, onSelect }: Props) 
         />
       ) : null}
       <p
-        className={`w-12 shrink-0 text-sm font-medium ${
+        className={`w-[5.5rem] shrink-0 text-left text-sm font-medium ${
           isToday || selected ? "text-accent" : "text-text-secondary"
         }`}
       >
