@@ -51,7 +51,7 @@ const CLOUD =
   "M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z";
 
 const SUN_RAYS =
-  "M8 2.5v1.6M8 11.9v1.6M2.5 8h1.6M11.9 8h1.6M4.1 4.1l1.1 1.1M10.8 10.8l1.1 1.1M11.9 4.1l-1.1 1.1M5.2 10.8l-1.1 1.1";
+  "M12 3.25v1.8M12 19v1.8M3.25 12h1.8M19 12h1.8";
 
 export function WeatherIcon({ name, className, animated = false }: IconProps) {
   return (
@@ -63,7 +63,7 @@ export function WeatherIcon({ name, className, animated = false }: IconProps) {
     >
       {name === "clear-day" && (
         <>
-          <circle cx="8" cy="8" r="3.4" />
+          <circle cx="12" cy="12" r="4" />
           <path className="wx-rays" d={SUN_RAYS} />
         </>
       )}
@@ -74,8 +74,11 @@ export function WeatherIcon({ name, className, animated = false }: IconProps) {
 
       {name === "partly-day" && (
         <>
-          <circle cx="8.5" cy="7.5" r="2.8" />
-          <path className="wx-rays" d={SUN_RAYS} transform="translate(0.5 -0.5)" />
+          <circle cx="8.25" cy="8.25" r="3" />
+          <path
+            className="wx-rays"
+            d="M8.25 2.75v1.4M8.25 12.35v1.4M2.75 8.25h1.4M12.35 8.25h1.4"
+          />
           <path d={CLOUD} transform="translate(1 -1.5)" />
         </>
       )}
