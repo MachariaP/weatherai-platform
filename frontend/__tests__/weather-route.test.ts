@@ -288,12 +288,46 @@ describe("GET /api/weather", () => {
         error: "backend_timeout",
         message: "Backend did not respond in time",
       },
+      requestId: "timeout-trace-01",
     });
 
     const res = await GET(makeRequest({ lat: "0", lon: "0" }));
     expect(res.status).toBe(504);
     const body = await res.json();
     expect(body.error).toBe("backend_timeout");
+    expect(body.message).toBe("Backend did not respond in time");
+    expect(res.headers.get("X-Request-ID")).toBe("timeout-trace-01");
+    expect(JSON.stringify(body)).not.toContain("BACKEND_URL");
+    expect(JSON.stringify(body)).not.toContain("weather-ai");
+  });
+
+  it("propagates 503 upstream_unavailable from backend", async () => {
+    mockFetchWeather.mockResolvedValue({
+      ok: false,
+      status: 503,
+      error: {
+        error: "upstream_unavailable",
+        message: "Weather service is temporarily unavailable.",
+      },
+    });
+
+    const res = await GET(makeRequest({ lat: "0", lon: "0" }));
+    expect(res.status).toBe(503);
+    const body = await res.json();
+    expect(body.error).toBe("upstream_unavailable");
+  });
+
+  it("propagates 429 rate_limited from backend", async () => {
+    mockFetchWeather.mockResolvedValue({
+      ok: false,
+      status: 429,
+      error: { error: "rate_limited", message: "Too many requests" },
+    });
+
+    const res = await GET(makeRequest({ lat: "0", lon: "0" }));
+    expect(res.status).toBe(429);
+    const body = await res.json();
+    expect(body.error).toBe("rate_limited");
   });
 
   it("does not leak internal exceptions when fetchWeather throws", async () => {

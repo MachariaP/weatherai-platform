@@ -112,6 +112,14 @@ JSON lines on the `app.events` logger. Typical events:
 Correlation: `X-Request-ID`. Next.js `/api/weather` forwards a safe incoming
 ID or generates one. FastAPI reuses it when valid.
 
+## BFF vs upstream timeout budget
+
+- Next.js weather BFF abort: **15 seconds** (`BACKEND_TIMEOUT_MS`)
+- FastAPI WeatherAI client timeout: **10 seconds** (`weatherai_timeout`)
+- WeatherAI timeout responses are **not** retried (`with_retry` skips timeout)
+- Theoretical multi-attempt 5xx/network worst case can exceed 15 seconds; the BFF is not required to wait through that entire budget
+- Free-host cold starts may exceed 15 seconds; fail with `backend_timeout` and rely on manual Retry/Refresh — do not add keep-alives or automatic BFF retries
+
 Never logged: API keys, `Authorization` / Bearer values, cookies, weather
 payloads, raw upstream bodies, Redis URLs (none configured). Coordinates are
 not written on the default `http_request` line (path + request ID only).

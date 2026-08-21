@@ -116,8 +116,8 @@ params, and does not invalidate cache from the browser. A response with
 | 502 | `malformed_response` | Non-JSON, non-object, or data that failed normalization |
 | 503 | `upstream_unavailable` | WeatherAI circuit is open (cache HIT still served) |
 | 503 | `backend_unavailable` | Next.js could not reach FastAPI |
-| 504 | `backend_timeout` | Next.js did not receive a FastAPI response in time |
-| 504 | `timeout` | WeatherAI did not respond within the backend timeout |
+| 504 | `backend_timeout` | Next.js weather BFF abort (15s) before FastAPI responded |
+| 504 | `timeout` | WeatherAI did not respond within FastAPI's 10s upstream timeout |
 
 **Error Shape:**
 
