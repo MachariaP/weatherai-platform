@@ -111,6 +111,38 @@ test.describe("advanced weather exploration", () => {
     expect(overflow).toBeLessThanOrEqual(2);
   });
 
+  test("timeline scrubber stays in sync with the hourly strip", async ({ page }) => {
+    const api = await installApiMock(page);
+    api.geocodeJson(GEOCODE_NAIROBI);
+    api.weatherJson(NAIROBI_EXPLORATION);
+    await openHome(page);
+    await typePlace(page, "Nairobi");
+    await waitForSuggestion(page, /Nairobi, Kenya/);
+    await page.getByRole("option", { name: /Nairobi, Kenya/ }).click();
+    await expectDashboard(page);
+
+    const slider = page.getByRole("slider", { name: "Hourly weather timeline" });
+    await expect(slider).toBeVisible();
+    const strip = page.getByRole("list", { name: "Hourly forecast times" });
+    await strip.getByRole("button").nth(1).click();
+    await expect(page.getByRole("status").filter({ hasText: /Forecast at/ })).toBeVisible();
+    await expect(strip.getByRole("button").nth(1)).toHaveAttribute("aria-pressed", "true");
+  });
+
+  test("reduced-motion still loads the dashboard", async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    const api = await installApiMock(page);
+    api.geocodeJson(GEOCODE_NAIROBI);
+    api.weatherJson(NAIROBI_EXPLORATION);
+    await openHome(page);
+    await typePlace(page, "Nairobi");
+    await waitForSuggestion(page, /Nairobi, Kenya/);
+    await page.getByRole("option", { name: /Nairobi, Kenya/ }).click();
+    await expectDashboard(page);
+    await expect(page.getByRole("region", { name: "Current weather" })).toBeVisible();
+    await expect(page.getByRole("slider", { name: "Hourly weather timeline" })).toBeVisible();
+  });
+
   test("compare fetches only the two chosen favorites without AI", async ({ page }) => {
     const api = await installApiMock(page);
     api.weatherByLat({
