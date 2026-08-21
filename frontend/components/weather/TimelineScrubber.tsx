@@ -5,7 +5,7 @@ import {
   formatScrubberValueText,
   formatSelectedHourLabel,
   formatWindowEndLabel,
-  isCurrentHour,
+  isObservedHour,
 } from "@/lib/format";
 import type { HourlyForecast } from "@/lib/types";
 
@@ -13,6 +13,9 @@ interface Props {
   hours: HourlyForecast[];
   selectedTime: string | null;
   onSelectTime: (time: string) => void;
+  observedAt?: string | null;
+  /** Authoritative Now index when provided by HourlyExploration. */
+  nowIndex?: number;
   /** Nested inside the Next 24 hours group — quieter chrome. */
   embedded?: boolean;
 }
@@ -25,6 +28,8 @@ export function TimelineScrubber({
   hours,
   selectedTime,
   onSelectTime,
+  observedAt = null,
+  nowIndex = -1,
   embedded = false,
 }: Props) {
   const max = Math.max(0, hours.length - 1);
@@ -38,17 +43,19 @@ export function TimelineScrubber({
   const midIndex = max >= 4 ? Math.floor(max / 2) : -1;
   const midTime = midIndex >= 0 ? hours[midIndex]?.time : undefined;
   const valueText = selected?.time
-    ? formatScrubberValueText(selected.time)
+    ? formatScrubberValueText(selected.time, observedAt)
     : "Unavailable";
   const liveLabel = selected?.time
-    ? formatSelectedHourLabel(selected.time)
+    ? formatSelectedHourLabel(selected.time, observedAt)
     : "Unavailable";
-  const startLabel =
-    startTime && isCurrentHour(startTime)
-      ? "Now"
-      : startTime
-        ? formatHourlyClock(startTime)
-        : "";
+  const startIsNow =
+    nowIndex === 0 ||
+    (nowIndex < 0 && Boolean(startTime) && isObservedHour(startTime, observedAt));
+  const startLabel = startIsNow
+    ? "Now"
+    : startTime
+      ? formatHourlyClock(startTime)
+      : "";
 
   if (hours.length === 0) return null;
 
@@ -100,9 +107,11 @@ export function TimelineScrubber({
           </span>
         ) : null}
         <span className="min-w-0 truncate text-right">
-          <span className="md:hidden">{formatWindowEndLabel(startTime, endTime, true)}</span>
+          <span className="md:hidden">
+            {formatWindowEndLabel(startTime, endTime, true, observedAt)}
+          </span>
           <span className="hidden md:inline">
-            {formatWindowEndLabel(startTime, endTime, false)}
+            {formatWindowEndLabel(startTime, endTime, false, observedAt)}
           </span>
         </span>
       </div>

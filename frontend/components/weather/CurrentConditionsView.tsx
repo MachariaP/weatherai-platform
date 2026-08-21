@@ -158,6 +158,7 @@ export function CurrentConditionsView() {
           <HourlyExploration
             hours={data.hourly}
             units={units}
+            observedAt={data.current.observed_at}
             onExploreHour={onExploreHour}
           />
         </div>

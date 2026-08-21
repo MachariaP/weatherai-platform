@@ -85,23 +85,66 @@ export function formatHourlyClock(time: string): string {
 
 export type HourRelation = "now" | "future" | "past";
 
-export function hourRelation(time: string): HourRelation {
-  if (isCurrentHour(time)) return "now";
-  const date = new Date(time);
-  if (Number.isNaN(date.getTime())) return "future";
-  return date.getTime() > Date.now() ? "future" : "past";
+/**
+ * Naive hour identity from a timezone-naive ISO-like stamp.
+ * `2026-08-21T09:45` / `…T09:00` / `…T09:00:00` → `2026-08-21T09`.
+ * Does not construct Date. Malformed input → null.
+ */
+export function naiveHourKey(iso: string | null | undefined): string | null {
+  if (!iso?.trim()) return null;
+  const match = iso
+    .trim()
+    .match(/^(\d{4}-\d{2}-\d{2})T(\d{2})(?::\d{2}(?::\d{2})?)?$/);
+  return match ? `${match[1]}T${match[2]}` : null;
 }
 
-export function formatSelectedHourLabel(time: string): string {
-  const relation = hourRelation(time);
+/**
+ * True when the hourly row's naive date+hour matches `observed_at`'s.
+ * Browser timezone is irrelevant. Missing/malformed values → false.
+ */
+export function isObservedHour(
+  hourlyTime: string | null | undefined,
+  observedAt: string | null | undefined
+): boolean {
+  const hour = naiveHourKey(hourlyTime);
+  const observed = naiveHourKey(observedAt);
+  if (!hour || !observed) return false;
+  return hour === observed;
+}
+
+/**
+ * Past / observation-hour / future relative to provider `observed_at`.
+ * Without a usable observation stamp, nothing is "now"; rows are treated as
+ * future so labels stay forecast-style rather than inventing browser past.
+ */
+export function hourRelation(
+  time: string,
+  observedAt: string | null | undefined
+): HourRelation {
+  const hour = naiveHourKey(time);
+  if (!hour) return "future";
+  const observed = naiveHourKey(observedAt);
+  if (!observed) return "future";
+  if (hour === observed) return "now";
+  return hour < observed ? "past" : "future";
+}
+
+export function formatSelectedHourLabel(
+  time: string,
+  observedAt: string | null | undefined
+): string {
+  const relation = hourRelation(time, observedAt);
   const clock = formatHourlyClock(time);
   if (relation === "now") return "Now";
   if (relation === "past") return `At ${clock}`;
   return `Forecast at ${clock}`;
 }
 
-export function formatScrubberValueText(time: string): string {
-  const relation = hourRelation(time);
+export function formatScrubberValueText(
+  time: string,
+  observedAt: string | null | undefined
+): string {
+  const relation = hourRelation(time, observedAt);
   const clock = formatHourlyClock(time);
   if (relation === "now") return `Current conditions at ${clock}`;
   if (relation === "past") return `At ${clock}`;
@@ -116,10 +159,11 @@ export function formatScrubberValueText(time: string): string {
 export function formatWindowEndLabel(
   startTime: string | undefined | null,
   endTime: string | undefined | null,
-  compact = false
+  compact = false,
+  observedAt: string | null | undefined = null
 ): string {
   if (!endTime?.trim()) return "";
-  if (isCurrentHour(endTime)) return "Now";
+  if (isObservedHour(endTime, observedAt)) return "Now";
   const clock = formatHourlyClock(endTime);
   const startDay = naiveDateKey(startTime);
   const endDay = naiveDateKey(endTime);
@@ -204,16 +248,4 @@ export function formatForecastDate(dateStr: string): string | null {
   const date = new Date(dateStr.includes("T") ? dateStr : `${dateStr}T00:00:00`);
   if (Number.isNaN(date.getTime())) return null;
   return date.toLocaleDateString("en", { month: "short", day: "numeric" });
-}
-
-export function isCurrentHour(timeStr: string): boolean {
-  const date = new Date(timeStr);
-  if (Number.isNaN(date.getTime())) return false;
-  const now = new Date();
-  return (
-    date.getFullYear() === now.getFullYear() &&
-    date.getMonth() === now.getMonth() &&
-    date.getDate() === now.getDate() &&
-    date.getHours() === now.getHours()
-  );
 }

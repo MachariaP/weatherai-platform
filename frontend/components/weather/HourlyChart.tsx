@@ -16,7 +16,9 @@ import { formatPrecipAmount, formatTemp, type Units } from "@/lib/format";
 interface Props {
   hours: HourlyForecast[] | null | undefined;
   units: Units;
-  /** Dashboard default: next 24 hours from now. Drill-down: all provided hours. */
+  /** Provider observation timestamp — anchors the Now marker. */
+  observedAt?: string | null;
+  /** Dashboard default: next 24 hours from observation hour. Drill-down: all provided hours. */
   range?: "next24" | "all";
   selectedTime?: string | null;
   onSelectTime?: (time: string) => void;
@@ -70,6 +72,7 @@ function nearestIndex(clientX: number, svg: SVGSVGElement, count: number): numbe
 export function HourlyChart({
   hours,
   units,
+  observedAt = null,
   range = "next24",
   selectedTime = null,
   onSelectTime,
@@ -81,9 +84,12 @@ export function HourlyChart({
         ? hours.filter((hour) => Boolean(hour.time?.trim()))
         : [];
     }
-    return nextHourlyWindow(hours);
-  }, [hours, range]);
-  const points = useMemo(() => toChartPoints(windowHours), [windowHours]);
+    return nextHourlyWindow(hours, observedAt);
+  }, [hours, observedAt, range]);
+  const points = useMemo(
+    () => toChartPoints(windowHours, observedAt),
+    [windowHours, observedAt]
+  );
   const precipOk = precipitationAvailable(windowHours);
   const [metric, setMetric] = useState<HourlyChartMetric>("temperature");
   const [hover, setHover] = useState<number | null>(null);

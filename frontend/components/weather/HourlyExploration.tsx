@@ -9,10 +9,10 @@ import {
   formatTemp,
   formatWindowEndLabel,
   hourRelation,
-  isCurrentHour,
+  isObservedHour,
   type Units,
 } from "@/lib/format";
-import { nextHourlyWindow } from "@/lib/hourly-chart";
+import { nextHourlyWindow, observedHourIndex } from "@/lib/hourly-chart";
 import { HourlyChart } from "./HourlyChart";
 import { HourlyScroll } from "./HourlyScroll";
 import { TimelineScrubber } from "./TimelineScrubber";
@@ -20,6 +20,8 @@ import { TimelineScrubber } from "./TimelineScrubber";
 interface Props {
   hours: HourlyForecast[] | null | undefined;
   units: Units;
+  /** Provider `current.observed_at` — anchors hourly Now. */
+  observedAt?: string | null;
   onExploreHour?: (hour: HourlyForecast | null) => void;
 }
 
@@ -27,19 +29,35 @@ function isFiniteNumber(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value);
 }
 
-function defaultSelected(windowHours: HourlyForecast[]): string | null {
-  const now = windowHours.find((hour) => hour.time && isCurrentHour(hour.time));
-  return now?.time ?? windowHours[0]?.time ?? null;
+function defaultSelected(
+  windowHours: HourlyForecast[],
+  nowIndex: number
+): string | null {
+  if (nowIndex >= 0) return windowHours[nowIndex]?.time ?? null;
+  return windowHours[0]?.time ?? null;
 }
 
 /**
  * Shared active hour for chart, strip, and scrubber over the next 24 hours.
  * Future hours are labeled as forecast, never as current weather.
+ * Now is the provider observation hour, not the browser clock.
  */
-export function HourlyExploration({ hours, units, onExploreHour }: Props) {
-  const windowHours = useMemo(() => nextHourlyWindow(hours), [hours]);
+export function HourlyExploration({
+  hours,
+  units,
+  observedAt = null,
+  onExploreHour,
+}: Props) {
+  const windowHours = useMemo(
+    () => nextHourlyWindow(hours, observedAt),
+    [hours, observedAt]
+  );
+  const nowIndex = useMemo(
+    () => observedHourIndex(windowHours, observedAt),
+    [windowHours, observedAt]
+  );
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
-  const fallbackTime = defaultSelected(windowHours);
+  const fallbackTime = defaultSelected(windowHours, nowIndex);
   const activeTime =
     selectedTime && windowHours.some((hour) => hour.time === selectedTime)
       ? selectedTime
@@ -48,24 +66,27 @@ export function HourlyExploration({ hours, units, onExploreHour }: Props) {
   const selected =
     windowHours.find((hour) => hour.time === activeTime) ?? null;
   const exploringAway = Boolean(
-    selected?.time && hourRelation(selected.time) !== "now"
+    selected?.time && hourRelation(selected.time, observedAt) !== "now"
   );
   const exploreHeading = selected?.time
-    ? formatSelectedHourLabel(selected.time)
+    ? formatSelectedHourLabel(selected.time, observedAt)
     : null;
   const endCap =
     windowHours.length > 0
       ? formatWindowEndLabel(
           windowHours[0]?.time,
           windowHours[windowHours.length - 1]?.time,
-          false
+          false,
+          observedAt
         )
       : "";
 
   function selectTime(time: string) {
     setSelectedTime(time);
     const hour = windowHours.find((row) => row.time === time) ?? null;
-    onExploreHour?.(hour && hour.time && !isCurrentHour(hour.time) ? hour : null);
+    onExploreHour?.(
+      hour && hour.time && !isObservedHour(hour.time, observedAt) ? hour : null
+    );
   }
 
   return (
@@ -81,9 +102,9 @@ export function HourlyExploration({ hours, units, onExploreHour }: Props) {
         </div>
         {selected?.time ? (
           <p className="text-xs font-medium tabular-nums text-text" aria-live="polite">
-            {hourRelation(selected.time) === "now"
+            {hourRelation(selected.time, observedAt) === "now"
               ? `Now · ${formatHourlyClock(selected.time)}`
-              : formatSelectedHourLabel(selected.time)}
+              : formatSelectedHourLabel(selected.time, observedAt)}
           </p>
         ) : null}
       </header>
@@ -110,12 +131,16 @@ export function HourlyExploration({ hours, units, onExploreHour }: Props) {
         <HourlyScroll
           hours={windowHours}
           units={units}
+          observedAt={observedAt}
+          nowIndex={nowIndex}
           selectedTime={activeTime}
           onSelectTime={selectTime}
           showHeading={false}
         />
         <TimelineScrubber
           hours={windowHours}
+          observedAt={observedAt}
+          nowIndex={nowIndex}
           selectedTime={activeTime}
           onSelectTime={selectTime}
           embedded
@@ -123,6 +148,7 @@ export function HourlyExploration({ hours, units, onExploreHour }: Props) {
         <HourlyChart
           hours={windowHours}
           units={units}
+          observedAt={observedAt}
           range="all"
           selectedTime={activeTime}
           onSelectTime={selectTime}

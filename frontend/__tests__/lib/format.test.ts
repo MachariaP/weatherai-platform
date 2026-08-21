@@ -1,4 +1,4 @@
-import { describe, it, expect, afterEach, vi } from "vitest";
+import { describe, it, expect } from "vitest";
 import {
   formatTemp,
   formatWind,
@@ -110,26 +110,25 @@ describe("formatObservedClock", () => {
 });
 
 describe("hourly time labels", () => {
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
   it("preserves naive hourly clock digits", () => {
     expect(formatHourlyClock("2026-08-21T09:00")).toBe("09:00");
     expect(naiveDateKey("2026-08-21T09:00")).toBe("2026-08-21");
   });
 
-  it("labels Now, future forecast, and past hours", () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date(2026, 7, 21, 9, 30, 0));
-    expect(formatSelectedHourLabel("2026-08-21T09:00")).toBe("Now");
-    expect(formatSelectedHourLabel("2026-08-21T14:00")).toBe("Forecast at 14:00");
-    expect(formatSelectedHourLabel("2026-08-21T08:00")).toBe("At 08:00");
-    expect(formatScrubberValueText("2026-08-21T09:00")).toBe(
+  it("labels Now, future forecast, and past hours from observed_at", () => {
+    const observed = "2026-08-21T09:45";
+    expect(formatSelectedHourLabel("2026-08-21T09:00", observed)).toBe("Now");
+    expect(formatSelectedHourLabel("2026-08-21T14:00", observed)).toBe(
+      "Forecast at 14:00"
+    );
+    expect(formatSelectedHourLabel("2026-08-21T08:00", observed)).toBe("At 08:00");
+    expect(formatScrubberValueText("2026-08-21T09:00", observed)).toBe(
       "Current conditions at 09:00"
     );
-    expect(formatScrubberValueText("2026-08-21T14:00")).toBe("Forecast at 14:00");
-    expect(formatScrubberValueText("2026-08-21T08:00")).toBe("At 08:00");
+    expect(formatScrubberValueText("2026-08-21T14:00", observed)).toBe(
+      "Forecast at 14:00"
+    );
+    expect(formatScrubberValueText("2026-08-21T08:00", observed)).toBe("At 08:00");
   });
 
   it("labels a next-day window end as Tomorrow or compact +1d", () => {

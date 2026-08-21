@@ -425,9 +425,6 @@ describe("CurrentConditionsView", () => {
   });
 
   it("keeps current temperature independent of the hourly Now value", async () => {
-    const now = new Date();
-    const pad = (n: number) => String(n).padStart(2, "0");
-    const stamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:00`;
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue(
@@ -440,7 +437,7 @@ describe("CurrentConditionsView", () => {
           },
           hourly: [
             {
-              time: stamp,
+              time: "2026-08-21T09:00",
               temperature: 17,
               precipitation: 0,
               weather_code: 3,
@@ -455,15 +452,10 @@ describe("CurrentConditionsView", () => {
     await waitFor(() => expect(screen.getByText("Observed 09:45")).toBeDefined());
     expect(screen.getByRole("region", { name: "Current weather" }).textContent).toContain("18°");
     expect(screen.getByRole("region", { name: "Hourly forecast" }).textContent).toContain("17°");
+    expect(screen.getByRole("region", { name: "Hourly forecast" }).textContent).toContain("Now");
   });
 
   it("does not change Observed when the hourly scrubber moves", async () => {
-    const now = new Date();
-    const pad = (n: number) => String(n).padStart(2, "0");
-    const currentStamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:00`;
-    const later = new Date(now);
-    later.setHours(later.getHours() + 1);
-    const laterStamp = `${later.getFullYear()}-${pad(later.getMonth() + 1)}-${pad(later.getDate())}T${pad(later.getHours())}:00`;
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue(
@@ -476,14 +468,14 @@ describe("CurrentConditionsView", () => {
           },
           hourly: [
             {
-              time: currentStamp,
+              time: "2026-08-21T09:00",
               temperature: 17,
               precipitation: 0,
               weather_code: 3,
               weather_description: "Overcast",
             },
             {
-              time: laterStamp,
+              time: "2026-08-21T10:00",
               temperature: 21,
               precipitation: 0,
               weather_code: 61,

@@ -1,9 +1,9 @@
 /**
  * Presentation adapters for the hourly evolution chart.
  *
- * Shared window: from the current hour (or the first row if none matches),
- * the next 24 hourly records. Chart, scrubber, and primary strip all use this
- * same window. Fallback first-row starts are not labeled Now.
+ * Shared window: from the provider observation hour (or the first row if none
+ * matches), the next 24 hourly records. Chart, scrubber, and primary strip all
+ * use this same window. Fallback first-row starts are not labeled Now.
  *
  * Values are not converted or invented — null precipitation stays null.
  * Hourly public contract has no wind; that metric is not exposed.
@@ -13,7 +13,7 @@ import {
   formatHourlyClock,
   formatPrecipAmount,
   formatTemp,
-  isCurrentHour,
+  isObservedHour,
   type Units,
 } from "@/lib/format";
 import type { HourlyForecast } from "@/lib/types";
@@ -41,26 +41,52 @@ export function hourDateKey(time: string | undefined | null): string | null {
   return match ? match[1] : null;
 }
 
+/**
+ * Next 24 hours from the first row whose naive hour matches `observedAt`.
+ * No match / missing observation → start at the first valid row (not labeled Now).
+ */
 export function nextHourlyWindow(
   hours: HourlyForecast[] | null | undefined,
+  observedAt: string | null | undefined = null,
   size = HOURLY_CHART_WINDOW
 ): HourlyForecast[] {
   const rows = Array.isArray(hours)
     ? hours.filter((hour) => Boolean(hour.time?.trim()))
     : [];
-  const nowIndex = rows.findIndex((hour) => isCurrentHour(hour.time));
+  const nowIndex = rows.findIndex((hour) =>
+    isObservedHour(hour.time, observedAt)
+  );
   const start = nowIndex >= 0 ? nowIndex : 0;
   return rows.slice(start, start + size);
+}
+
+/** Index of the first provider-observation hour in `hours`, or -1. */
+export function observedHourIndex(
+  hours: HourlyForecast[] | null | undefined,
+  observedAt: string | null | undefined
+): number {
+  if (!Array.isArray(hours)) return -1;
+  return hours.findIndex(
+    (hour) => Boolean(hour.time?.trim()) && isObservedHour(hour.time, observedAt)
+  );
 }
 
 export function precipitationAvailable(hours: HourlyForecast[]): boolean {
   return hours.some((hour) => isFiniteNumber(hour.precipitation));
 }
 
-export function toChartPoints(hours: HourlyForecast[]): HourlyChartPoint[] {
-  return hours.map((hour) => {
+/**
+ * Chart points for a window. Only the first matching observation hour is Now
+ * (duplicate timestamps later in the list are not labeled Now).
+ */
+export function toChartPoints(
+  hours: HourlyForecast[],
+  observedAt: string | null | undefined = null
+): HourlyChartPoint[] {
+  const nowIndex = observedHourIndex(hours, observedAt);
+  return hours.map((hour, index) => {
     const time = hour.time?.trim() ?? "";
-    const now = Boolean(time) && isCurrentHour(time);
+    const now = index === nowIndex && nowIndex >= 0;
     return {
       time,
       label: now ? "Now" : time ? formatHourlyClock(time) : "Unavailable",

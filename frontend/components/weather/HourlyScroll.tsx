@@ -7,13 +7,17 @@ import {
   formatHourlyClock,
   formatPrecipAmount,
   formatTemp,
-  isCurrentHour,
   type Units,
 } from "@/lib/format";
+import { observedHourIndex } from "@/lib/hourly-chart";
 
 interface Props {
   hours: HourlyForecast[] | null | undefined;
   units: Units;
+  /** Provider observation timestamp — anchors the Now label. */
+  observedAt?: string | null;
+  /** Authoritative Now index within `hours` when provided by a parent. */
+  nowIndex?: number;
   selectedTime?: string | null;
   onSelectTime?: (time: string) => void;
   /** When false, heading is screen-reader only (parent already titles the group). */
@@ -42,9 +46,12 @@ function handleScrollKeys(e: KeyboardEvent<HTMLDivElement>) {
   }
 }
 
-function hourLabel(time: string | undefined): string {
+function hourLabel(
+  time: string | undefined,
+  isNow: boolean
+): string {
   if (!time?.trim()) return "Unavailable";
-  return isCurrentHour(time) ? "Now" : formatHourlyClock(time);
+  return isNow ? "Now" : formatHourlyClock(time);
 }
 
 function alignNowCard(list: HTMLElement, card: HTMLElement) {
@@ -61,6 +68,8 @@ function alignNowCard(list: HTMLElement, card: HTMLElement) {
 export function HourlyScroll({
   hours,
   units,
+  observedAt = null,
+  nowIndex: nowIndexProp,
   selectedTime = null,
   onSelectTime,
   showHeading = true,
@@ -72,9 +81,10 @@ export function HourlyScroll({
   const skipSelectScroll = useRef(true);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
-  const nowIndex = rows.findIndex(
-    (hour) => Boolean(hour.time?.trim()) && isCurrentHour(hour.time)
-  );
+  const nowIndex =
+    typeof nowIndexProp === "number"
+      ? nowIndexProp
+      : observedHourIndex(rows, observedAt);
 
   const updateEdges = useCallback(() => {
     const list = listRef.current;
@@ -159,7 +169,7 @@ export function HourlyScroll({
               const temperature = isFiniteNumber(hour.temperature)
                 ? formatTemp(hour.temperature)
                 : "—";
-              const timeLabel = hourLabel(hour.time);
+              const timeLabel = hourLabel(hour.time, now);
               const precip = formatPrecipAmount(hour.precipitation, units);
               const precipLabel = precip ? `, ${precip}` : "";
               const cardClass = `flex w-20 shrink-0 flex-col items-center rounded-card border px-2 py-3 text-center motion-safe:transition-colors ${

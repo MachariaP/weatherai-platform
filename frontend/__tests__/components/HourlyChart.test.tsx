@@ -89,8 +89,6 @@ describe("HourlyChart", () => {
   });
 
   it("keeps the Now marker while a future selected marker moves", () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-08-20T10:30:00"));
     const hours = [
       HOURS[0],
       HOURS[1],
@@ -102,19 +100,31 @@ describe("HourlyChart", () => {
         weather_description: "Overcast",
       },
     ];
+    const observedAt = "2026-08-20T10:30";
     const { rerender } = render(
-      <HourlyChart hours={hours} units="metric" range="all" selectedTime="2026-08-20T10:00" />
+      <HourlyChart
+        hours={hours}
+        units="metric"
+        range="all"
+        observedAt={observedAt}
+        selectedTime="2026-08-20T10:00"
+      />
     );
     expect(screen.getByTestId("chart-now-marker")).toBeDefined();
     expect(screen.queryByTestId("chart-selected-marker")).toBeNull();
     rerender(
-      <HourlyChart hours={hours} units="metric" range="all" selectedTime="2026-08-20T12:00" />
+      <HourlyChart
+        hours={hours}
+        units="metric"
+        range="all"
+        observedAt={observedAt}
+        selectedTime="2026-08-20T12:00"
+      />
     );
     const nowX = screen.getByTestId("chart-now-marker").getAttribute("x1");
     const selectedX = screen.getByTestId("chart-selected-marker").getAttribute("x1");
     expect(nowX).toBeTruthy();
     expect(selectedX).toBeTruthy();
     expect(selectedX).not.toBe(nowX);
-    vi.useRealTimers();
   });
 });

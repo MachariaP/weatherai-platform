@@ -146,8 +146,6 @@ describe("HourlyScroll", () => {
   });
 
   it("aligns the Now card to the start of the strip on load", () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-08-20T12:30:00"));
     vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(
       function mockRect(this: HTMLElement) {
         const left =
@@ -172,7 +170,13 @@ describe("HourlyScroll", () => {
       }
     );
 
-    render(<HourlyScroll hours={hoursForDay()} units="metric" />);
+    render(
+      <HourlyScroll
+        hours={hoursForDay()}
+        units="metric"
+        observedAt="2026-08-20T12:30"
+      />
+    );
     const list = screen.getByRole("list", { name: "Hourly forecast times" });
 
     expect(screen.getByText("Now")).toBeDefined();
@@ -183,8 +187,6 @@ describe("HourlyScroll", () => {
   });
 
   it("realigns Now when hourly data is replaced after a refresh", () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-08-20T12:30:00"));
     vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(
       function mockRect(this: HTMLElement) {
         const left =
@@ -206,23 +208,36 @@ describe("HourlyScroll", () => {
     );
 
     const first = hoursForDay();
-    const { rerender } = render(<HourlyScroll hours={first} units="metric" />);
+    const { rerender } = render(
+      <HourlyScroll hours={first} units="metric" observedAt="2026-08-20T12:30" />
+    );
     const list = screen.getByRole("list", { name: "Hourly forecast times" });
     expect(list.scrollLeft).toBe(320);
 
     list.scrollLeft = 80;
-    rerender(<HourlyScroll hours={first} units="metric" />);
+    rerender(
+      <HourlyScroll hours={first} units="metric" observedAt="2026-08-20T12:30" />
+    );
     expect(list.scrollLeft).toBe(80);
 
-    rerender(<HourlyScroll hours={[...first]} units="metric" />);
+    rerender(
+      <HourlyScroll
+        hours={[...first]}
+        units="metric"
+        observedAt="2026-08-20T12:30"
+      />
+    );
     expect(list.scrollLeft).toBe(400);
   });
 
-  it("does not auto-scroll when no hour is the current hour", () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-01-01T08:00:00"));
-
-    render(<HourlyScroll hours={hoursForDay()} units="metric" />);
+  it("does not auto-scroll when no hour matches the observation", () => {
+    render(
+      <HourlyScroll
+        hours={hoursForDay()}
+        units="metric"
+        observedAt="2026-01-01T08:00"
+      />
+    );
     const list = screen.getByRole("list", { name: "Hourly forecast times" });
 
     expect(screen.queryByText("Now")).toBeNull();
@@ -231,13 +246,12 @@ describe("HourlyScroll", () => {
   });
 
   it("marks a selected hour without replacing the Now current marker", () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-08-20T12:30:00"));
     const onSelectTime = vi.fn();
     render(
       <HourlyScroll
         hours={hoursForDay()}
         units="metric"
+        observedAt="2026-08-20T12:30"
         selectedTime="2026-08-20T14:00"
         onSelectTime={onSelectTime}
       />
