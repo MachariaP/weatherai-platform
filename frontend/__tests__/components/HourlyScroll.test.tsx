@@ -229,4 +229,21 @@ describe("HourlyScroll", () => {
     expect(screen.queryByRole("listitem", { current: true })).toBeNull();
     expect(list.scrollLeft).toBe(0);
   });
+
+  it("marks a selected hour without replacing the Now current marker", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-20T12:30:00"));
+    const onSelectTime = vi.fn();
+    render(
+      <HourlyScroll
+        hours={hoursForDay()}
+        units="metric"
+        selectedTime="2026-08-20T14:00"
+        onSelectTime={onSelectTime}
+      />
+    );
+    expect(screen.getByRole("listitem", { current: true }).textContent).toContain("Now");
+    fireEvent.click(screen.getByRole("button", { name: /Hour 14/ }));
+    expect(onSelectTime).toHaveBeenCalledWith("2026-08-20T14:00");
+  });
 });

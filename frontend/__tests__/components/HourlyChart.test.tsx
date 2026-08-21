@@ -74,4 +74,13 @@ describe("HourlyChart", () => {
     render(<HourlyChart hours={many} units="metric" range="all" />);
     expect(screen.getByRole("img").getAttribute("aria-label")).toMatch(/over 30 hours/);
   });
+
+  it("emphasizes the selected hour from shared exploration state", () => {
+    render(
+      <HourlyChart hours={HOURS} units="metric" range="all" selectedTime="2026-08-20T11:00" />
+    );
+    const circles = document.querySelectorAll("circle");
+    expect(circles[1]?.getAttribute("r")).toBe("4.5");
+    expect(circles[0]?.getAttribute("r")).toBe("2");
+  });
 });

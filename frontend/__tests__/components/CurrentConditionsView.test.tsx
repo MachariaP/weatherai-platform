@@ -118,6 +118,9 @@ describe("CurrentConditionsView", () => {
     expect(screen.getByText("Hourly forecast is not available.")).toBeDefined();
     expect(screen.getByText("Hourly evolution is not available.")).toBeDefined();
     expect(screen.getByText("Daily forecast is not available.")).toBeDefined();
+    expect(document.querySelector("[data-atm='CLOUDY']")?.getAttribute("aria-hidden")).toBe(
+      "true"
+    );
   });
 
   it("omits AI insight when the preference is off", async () => {
